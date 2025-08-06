@@ -1,0 +1,2679 @@
+Repository Structure
+
+LazaiTrader/
+│   ├── LICENSE
+│   ├── LazaiTrader.MD
+│   ├── README.MD
+│   ├── codetoprompt.py
+│   ├── lt_main.sh
+│   ├── main.py
+│   ├── requirements.txt
+│   ├── config/
+│   │   ├── config.json.example
+│   │   ├── tokens.json.example
+│   │   ├── users.json.example
+│   │   ├── wallets.json.example
+│   ├── logs/
+│   ├── plugins/
+│   │   ├── LT_bot.py
+│   │   ├── addresses.txt
+│   │   ├── lt_alith.py
+
+
+File Contents
+
+// filepath: LICENSE
+MIT License
+
+Copyright (c) 2025 Mart
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+// filepath: LazaiTrader.MD
+# LazaiTrader User Guide
+
+## What is LazaiTrader?
+LazaiTrader is an intelligent trading assistant that works through Telegram. It automatically trades cryptocurrency for you using a proven strategy called "Martingale" on the Metis blockchain network. Think of it as your personal AI trader that never sleeps!
+
+## 🎯 How It Works (Simple Explanation)
+1. **You Get a Wallet**: When you start, you receive a funded test wallet
+2. **You Set Your Strategy**: Tell the bot how you want to trade (conservative vs aggressive)
+3. **AI Does the Trading**: The bot watches prices and makes trades automatically
+4. **You Get Updates**: Receive real-time notifications about your trades
+5. **You Can Win Prizes**: Top performers share $100 in rewards!
+
+## 🚀 Getting Started
+
+### Step 1: Join the Bot
+- Click the LazaiTrader bot link or scan the QR code
+- Send `/start` to begin
+- You'll automatically receive a funded test wallet with 100 TESTgUSDC + 10,000,000 TESTgMetis
+
+### Step 2: Configure Your Strategy
+- Send `/config` to set up your trading preferences
+- Choose between two simple options:
+  - **🛡️ Conservative Strategy**: Lower risk, smaller profits (5% trade amount, 5% trigger, $20 max)
+  - **⚡ Aggressive Strategy**: Higher risk, larger potential gains (20% trade amount, 15% trigger, $100 max)
+
+### Step 3: Fine-tune Your Settings  
+- **Trade Percentage**: How much of your balance to use per trade (adjustable ±20%)
+- **Trigger Percentage**: Price change needed to execute trades (adjustable ±20%)
+- **Maximum Amount**: Safety limit on individual trade sizes (adjustable ±20%)
+- **Multiplier**: Fixed at 1.5x for consecutive trades
+- **Minimum Amount**: Fixed at $0
+
+### Step 4: Start Trading!
+- Once configured, your AI trader starts working immediately
+- You'll receive notifications whenever trades happen
+- Check your progress anytime with `/myconfig`
+
+## 💰 Your Test Wallet
+
+**Starting Balance:**
+- 100 TESTgUSDC (like $100 USD)
+- 10,000,000 TESTgMetis (test Metis tokens)
+
+**What This Means:**
+- These are test tokens on the Hyperion testnet (practice network)
+- No real money is at risk during testing
+- Your wallet address: Use `/wallet` or `/address` to see it anytime
+
+## 🤖 The Martingale Strategy Explained
+
+### What is Martingale?
+Martingale is a trading strategy that:
+- **Buys more** when prices go down (hoping they'll recover)
+- **Sells more** when prices go up (taking profits)
+- **Increases trade size** after each consecutive trade in the same direction (1.5x multiplier)
+
+### Example in Action:
+1. **Price drops 5%** → Bot buys $10 worth of tgMetis
+2. **Price drops another 5%** → Bot buys $15 worth (1.5x previous)
+3. **Price drops again** → Bot buys $22.50 worth
+4. **Price recovers** → Bot sells everything for profit
+
+### Your Settings Control:
+- **Trade Percentage**: How much of your wallet to use per trade
+- **Trigger Percentage**: How much price must change to trigger a trade  
+- **Multiplier**: Fixed at 1.5x for consecutive trades
+- **Max/Min Amounts**: Safety limits on trade sizes
+
+## 📱 Telegram Commands
+
+### Essential Commands
+- `/start` - Register and get your wallet
+- `/config` - Set up your trading strategy
+- `/wallet` or `/address` - See your wallet address
+- `/myconfig` - View your current strategy settings
+- `/balance` - Check your current token balances
+- `/withdraw` - Withdrawal info (disabled during testnet)
+- `/cancel` - Cancel configuration process
+
+### Getting Help
+- Visit @LazaiTrader group to chat with our Alith-powered AI!
+- Get trading strategy advice, Metis blockchain information, and project updates
+
+## 📊 Understanding Your Trade Notifications
+
+When the bot makes a trade, you'll receive a message like this:
+
+```
+🔴 PRODUCTION TRADE EXECUTED 📉
+User: yourUsername
+Pair: tgMetis/tgUSDC
+Action: BUY tgMetis
+Amount: 19,057,242 tgMetis
+Trade Value: $34.93
+🔥 Consecutive #3: 33.75% trade size
+🔗 TX Hash: 0x1a6e7d8c...
+Base Price: 0.000002 tgUSDC
+Current Price: 0.000002 tgUSDC
+Price Change: -8.35%
+Current Balances:
+• tgMetis: 25,556,242
+• tgUSDC: 68.57
+• Total USD: $115.41
+```
+
+### What This Means:
+- **Action**: Whether bot bought or sold
+- **Amount**: How many tokens were traded
+- **Trade Value**: Dollar value of the trade
+- **Consecutive Info**: Shows if this is part of a streak (with 1.5x multiplier)
+- **Price Change**: How much the price moved to trigger the trade
+- **Current Balances**: Your wallet contents after the trade
+- **Total USD**: Your overall wallet value
+
+## 🏆 Testing Phase & Rewards
+
+### Timeline: Until August 7, 2025
+
+### How to Win:
+- The bot trades automatically based on your strategy
+- Your goal: Have the highest USD value in your wallet at the end
+- Success depends on:
+  - Your strategy settings
+  - Market conditions
+  - How well the Martingale strategy performs with tgMetis price fluctuations
+
+### Prizes:
+- **1st Place**: $50 USD
+- **2nd Place**: $25 USD  
+- **3rd Place**: $25 USD
+
+### What You Need to Do:
+- Configure your strategy thoughtfully
+- Monitor your performance through notifications
+- Optionally adjust your strategy if needed using `/config`
+- Wait for the testing period to end
+
+## ⚙️ Strategy Tips
+
+### For Conservative Traders:
+- Choose "Conservative Strategy" option
+- Keep default settings or reduce trade/trigger percentages slightly
+- This gives you more frequent trades with lower risk per trade
+
+### For Aggressive Traders:
+- Choose "Aggressive Strategy" option
+- Consider increasing maximum trade amounts
+- This means fewer but potentially more profitable trades
+
+### Understanding Risk:
+- **Lower trigger percentage** = More frequent trades (more sensitive to price changes)
+- **Higher trade percentage** = Larger individual trades
+- **Higher max amount** = Allows for bigger trades when you have large balances
+- **1.5x multiplier** = Each consecutive trade in same direction is 50% larger
+
+## 🔐 Safety & Security
+
+### During Testing Phase:
+- **No Real Money**: All trading uses test tokens
+- **Admin Managed**: Test wallets are controlled by the system
+- **Safe Environment**: Hyperion testnet is a practice network
+- **Withdrawal Disabled**: Focus is on testing strategies, not moving funds
+
+### For Future Production:
+- **Your Own Wallets**: You'll control your own funds
+- **Real Trading**: On the actual Metis network
+- **Enhanced Security**: Confidential computing and public audit logs
+
+## 🌐 Technical Background (Optional Reading)
+
+### Trading Pair:
+- **Currently Available**: tgMetis/tgUSDC only
+- **Coming Soon**: Metis-USDC, ETH-USDC (after testnet)
+
+### Networks Used:
+- **Hyperion Testnet**: For testing (current phase)
+- **Metis Andromeda**: Real network (future production)
+
+### What's Happening Behind the Scenes:
+1. Bot monitors gMetis price on Metis Andromeda mainnet (Hercules DEX)
+2. Updates price information on Hyperion testnet
+3. Checks if price moved enough to trigger your strategy
+4. Executes trades on the test DEX (decentralized exchange)
+5. Records everything and sends you updates
+
+### The Technology:
+- **Blockchain**: Metis (Ethereum-compatible)
+- **Smart Contracts**: Automated trading logic
+- **AI Framework**: Alith by LazaiNetwork
+- **Price Data**: Real market prices from gMetis on Metis Andromeda
+
+## ❓ Frequently Asked Questions
+
+**Q: Do I need to know anything about crypto to participate?**
+A: No! Just configure your preferences and the AI handles everything.
+
+**Q: Can I lose real money during testing?**
+A: No, testing uses fake tokens with no real value.
+
+**Q: How often does the bot trade?**
+A: Only when prices move by your trigger percentage (e.g., 5-30% depending on your settings).
+
+**Q: Can I change my strategy after starting?**
+A: Yes, use `/config` again to update your preferences anytime.
+
+**Q: What if I don't like the trades the bot is making?**
+A: You can reconfigure anytime, but remember the strategy needs time to work.
+
+**Q: How do I know if I'm winning?**
+A: Watch your "Total USD" value in trade notifications and use `/balance` - higher is better!
+
+**Q: What happens after the testing phase?**
+A: The project will move to mainnet where you can trade with real funds.
+
+**Q: Why can't I withdraw during testing?**
+A: Withdrawals are disabled during testnet to focus on strategy testing. This will be enabled for mainnet.
+
+**Q: What's the difference between tgMetis and gMetis?**
+A: tgMetis is the testnet version of gMetis tokens used for safe testing.
+
+## 🆘 Getting Help
+
+### If Something Goes Wrong:
+1. **Try the command again** - Sometimes network issues cause temporary problems
+2. **Check your configuration** - Use `/myconfig` to verify settings
+3. **Visit @LazaiTrader group** - Chat with the Alith AI agent for help
+4. **Be patient** - Some operations take time on the blockchain
+
+### Common Issues:
+- **"You're not registered"** → Send `/start` first
+- **"No configuration found"** → Use `/config` to set up your strategy
+- **Delayed notifications** → Blockchain confirmations take time
+- **"Pair not available"** → Only tgMetis/tgUSDC is supported during testnet
+
+### Contact Support:
+- Chat with the Alith AI agent in @LazaiTrader group for immediate help
+- Ask questions about trading, Metis, or the project
+- The AI understands both technical and basic questions
+
+## 🎉 Ready to Start?
+
+1. **Click the bot link** or scan the QR code
+2. **Send `/start`** to get your funded wallet
+3. **Use `/config`** to set up your strategy
+4. **Watch the magic happen** as your AI trader works!
+5. **Join @LazaiTrader group** for community support and AI assistance
+
+Remember: This is a learning and testing experience. The goal is to see how well different strategies perform and help improve the system for future real-money trading.
+
+Good luck, and may the best strategy win! 🚀
+
+---
+*LazaiTrader is built by gMetis using the Alith AI framework. This testing phase runs until August 7, 2025, on the Hyperion testnet.*
+
+// filepath: README.MD
+# LazaiTrader - Technical Documentation
+
+## Overview
+
+LazaiTrader is a Telegram-based AI trading agent built with the Alith framework by LazaiNetwork. It executes automated Martingale trading strategies on the Hyperion testnet for the TESTgMetis-TESTgUSDC trading pair, with plans to migrate to the Hercules DEX on Metis Andromeda for production.
+
+## Architecture
+
+### System Components
+
+1. **Telegram Bot Interface** (Alith Integration)
+   - Built using the Alith AI agent framework
+   - Handles user onboarding, strategy configuration, and trade notifications
+   - Located in `plugins/LT_bot.py`
+
+2. **Trading Engine** (`main.py`)
+   - Monitors TESTgMetis prices from Metis Andromeda via DexScreener API
+   - Updates oracle prices on Hyperion testnet
+   - Executes Martingale trading strategy
+   - Handles wallet whitelisting and trade execution
+
+3. **Smart Contract Integration**
+   - Custom DEX contract on Hyperion testnet
+   - Integrated price oracle updated with Andromeda price data
+   - Supports TESTgMetis-TESTgUSDC trading pair
+
+4. **Configuration System**
+   - Modular JSON-based configuration
+   - Separate files for users, wallets, tokens, and trading pairs
+   - Located in `config/` directory
+
+## Installation & Setup
+
+### Prerequisites
+
+- Python 3.8+
+- Web3 connection to Hyperion testnet
+- Telegram Bot Token
+- DexScreener API access
+
+### Installation
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd LazaiTrader
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Setup environment variables
+cp .env.template .env
+# Edit .env with your configuration
+```
+
+### Configuration Files
+
+Configure the following JSON files in the `config/` directory:
+
+#### `config.json` - Trading Pairs Configuration
+```json
+{
+  "trading_pairs": [
+    {
+      "symbol1": "tgMetis",
+      "symbol2": "tgUSDC", 
+      "trade_percentage": 0.1,
+      "trigger_percentage": 0.02,
+      "max_amount": 50.0,
+      "minimum_amount": 20.0,
+      "decimal": 3,
+      "multiplier": 2,
+      "userID": "user1"
+    }
+  ]
+}
+```
+
+#### `tokens.json` - Token Contract Addresses
+```json
+{
+  "tokens": {
+    "tgMetis": {
+      "address": "0x69Dd3C70Ae76256De7Ec9AF5893DEE49356D45fc",
+      "decimals": 18,
+      "symbol": "tgMetis"
+    },
+    "tgUSDC": {
+      "address": "0x6Eb66c8bBD57FdA71ecCAAc40a56610C2CA8FDb8", 
+      "decimals": 18,
+      "symbol": "tgUSDC"
+    }
+  }
+}
+```
+
+#### `users.json` - User to Wallet Mapping
+```json
+{
+  "users": {
+    "user1": {
+      "wallet_address": "0x123...",
+      "telegram_chat_id": "123456789",
+      "username": "username1"
+    }
+  }
+}
+```
+
+#### `wallets.json` - Private Key Storage
+```json
+{
+  "wallets": {
+    "0x123...": {
+      "private_key": "0x456...",
+      "wallet_name": "User Wallet"
+    }
+  }
+}
+```
+
+### Environment Variables
+
+Create a `.env` file with the following variables:
+
+```bash
+# Blockchain Configuration
+RPC_URL=https://hyperion-testnet.metisdevops.link
+CHAIN_ID=133717
+DEX_ADDR=0x4704759E4a426b29615e4841B092357460925eFf
+ORACLE_OWNER_PK=your_oracle_owner_private_key
+
+# API Configuration  
+DEXSCREENER_API=https://api.dexscreener.com/latest/dex/pairs/metis/0xb7af89d7fe88d4fa3c9b338a0063359196245eaa
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+
+# Execution Mode
+PRODUCTION=0  # Set to 1 for production mode
+```
+
+## Usage
+
+### Running in Simulation Mode (Default)
+```bash
+python main.py
+```
+
+### Running in Production Mode
+```bash
+PRODUCTION=1 python main.py
+```
+
+### Running the Telegram Bot
+```bash
+python plugins/LT_bot.py
+```
+
+### Automated Execution (Cron)
+```bash
+# Every 5 minutes
+*/5 * * * * cd /path/to/LazaiTrader && python main.py
+
+# Every hour  
+0 * * * * cd /path/to/LazaiTrader && python main.py
+```
+
+## Martingale Trading Strategy
+
+### Algorithm Logic
+
+**Buy Signal**: When TESTgMetis price drops by `trigger_percentage`:
+- Buy `trade_percentage` of available TESTgUSDC
+- For consecutive drops, multiply trade size by `multiplier`
+
+**Sell Signal**: When TESTgMetis price rises by `trigger_percentage`:
+- Sell `trade_percentage` of available TESTgMetis  
+- For consecutive rises, multiply trade size by `multiplier`
+
+### Parameters
+
+- `trade_percentage`: Base percentage of wallet to trade (0.1 = 10%)
+- `trigger_percentage`: Price change threshold (0.02 = 2%)
+- `max_amount`: Maximum trade value in TESTgUSDC
+- `minimum_amount`: Minimum trade value in TESTgUSDC
+- `multiplier`: Factor for consecutive trade size increases
+- `decimal`: Price precision for logging
+
+### Trade Execution Flow
+
+1. **Price Monitoring**: Fetch current TESTgMetis price from Andromeda
+2. **Oracle Update**: Update Hyperion oracle with latest price
+3. **Trigger Check**: Compare current price vs base price
+4. **Trade Calculation**: Calculate trade amount with multiplier logic
+5. **Wallet Whitelisting**: Add user wallet to DEX whitelist
+6. **Trade Execution**: Execute swap on DEX contract
+7. **Logging**: Record trade details and update base price
+8. **Notification**: Send Telegram notification to user
+
+## API Integration
+
+### DexScreener API
+- **Endpoint**: `https://api.dexscreener.com/latest/dex/pairs/metis/{pair_address}`
+- **Purpose**: Fetch real-time TESTgMetis price from Metis Andromeda
+- **Rate Limit**: Built-in rate limiting (3-5 calls/second)
+
+### Smart Contract Calls
+
+#### Oracle Price Update
+```python
+dex.functions.setPrices(price_gmetis_to_usdc, price_usdc_to_gmetis)
+```
+
+#### Trade Execution
+```python
+# 1. Approve token spending
+token.functions.approve(dex_address, amount)
+
+# 2. Execute swap
+dex.functions.swap(token_in_address, amount_in)
+```
+
+## Logging & Monitoring
+
+### Log Files
+
+- `logs/trading_main.log`: Successful operations
+- `logs/trading_errors.log`: Error tracking
+- `logs/{symbol1}_{symbol2}_{userID}.csv`: Price data per trading pair
+- `logs/{symbol1}_{symbol2}_{userID}_trades.csv`: Trade history
+
+### Trade Notification Format
+
+```
+🔴 PRODUCTION TRADE EXECUTED 📉
+User: username
+Pair: tgMetis/tgUSDC
+Action: BUY tgMetis
+Amount: 19057242.225859 tgMetis
+Trade Value: $34.93
+🔥 Consecutive #3: 33.75% trade size
+🔗 TX Hash: 0x1a6e7d8c...
+Base Price: 0.000002 tgUSDC
+Current Price: 0.000002 tgUSDC  
+Price Change: -8.35%
+Current Balances:
+• tgMetis: 25556242.225859
+• tgUSDC: 68.570075
+• Total USD: $115.41
+```
+
+## Security Considerations
+
+### Testing Phase Security
+- Admin-controlled wallets with pre-funded balances
+- Simulation mode for safe testing
+- Rate limiting to prevent RPC abuse
+
+### Production Phase Security  
+- Confidential Virtual Machine (CVM) with Trusted Execution Environment (TEE)
+- User-controlled wallets without admin access
+- Infrastructure-as-code deployment
+- Public server logs for transparency
+- Open-source smart contracts
+
+### Private Key Management
+- Store `wallets.json` securely with restricted permissions
+- Never commit private keys to version control
+- Use environment variables for sensitive configuration
+
+## Development
+
+### File Structure
+```
+LazaiTrader/
+├── main.py                 # Main trading engine
+├── requirements.txt        # Python dependencies
+├── config/                 # Configuration files
+│   ├── config.json        # Trading pairs
+│   ├── tokens.json        # Token addresses
+│   ├── users.json         # User mappings
+│   └── wallets.json       # Private keys
+├── logs/                   # Log files
+├── plugins/                # Bot and utilities
+│   ├── LT_bot.py          # Telegram bot
+│   ├── alith.py           # Alith agent integration
+│   └── addresses.txt      # Wallet addresses
+└── README.md              # This file
+```
+
+### Adding New Features
+
+#### New Trading Pairs
+1. Add token info to `tokens.json`
+2. Update contract ABIs if needed
+3. Configure trading pair in `config.json`
+4. Test in simulation mode
+
+#### New Users
+1. Add wallet to `wallets.json` 
+2. Map user in `users.json`
+3. Configure trading strategy in `config.json`
+
+### Error Handling
+
+The system includes comprehensive error handling:
+- Graceful failure per trading pair
+- Detailed error logging
+- Continuation of other pairs if one fails
+- Optional Telegram error notifications
+
+## Testing
+
+### Hyperion Testnet Phase (Until Aug 7, 2025)
+
+- **Wallet Funding**: 100 TESTgUSDC + 10M TESTgMetis per user
+- **Incentive Structure**: $100 rewards split among top 3 performers
+- **Evaluation Metric**: Total USD value of wallet contents
+
+### Testing Commands
+
+```bash
+# Run in simulation mode
+python main.py
+
+# Check logs
+tail -f logs/trading_main.log
+tail -f logs/trading_errors.log
+
+# Test specific pair
+# Edit config.json to include only target pair
+python main.py
+```
+
+## Production Migration
+
+### Hercules DEX Integration
+- Migration from Hyperion testnet to Metis Andromeda mainnet
+- Integration with Hercules DEX native capabilities
+- Potential replacement of separate oracle with DEX-native pricing
+
+### Deployment Considerations
+- Automated infrastructure deployment
+- CVM with TEE security implementation
+- Public server log accessibility
+- User-funded wallet generation without admin access
+
+## API Reference
+
+### Main Functions
+
+#### `process_trading_pair(w3, pair_config)`
+Processes a single trading pair based on configuration.
+
+**Parameters:**
+- `w3`: Web3 instance
+- `pair_config`: Trading pair configuration dict
+
+**Returns:** Boolean indicating success/failure
+
+#### `execute_dex_trade(w3, base_asset, quote_asset, action, quantity, user_data)`
+Executes trade on DEX contract.
+
+**Parameters:**
+- `w3`: Web3 instance  
+- `base_asset`: Base asset symbol
+- `quote_asset`: Quote asset symbol
+- `action`: "BUY" or "SELL"
+- `quantity`: Trade quantity
+- `user_data`: User information dict
+
+**Returns:** Dict with transaction details
+
+#### `get_price(base_asset, quote_asset)`
+Fetches current price for trading pair.
+
+**Returns:** Tuple of (date_str, time_str, price)
+
+### Rate Limiting
+
+Built-in decorators for API and RPC rate limiting:
+- `@rate_limit(calls_per_second=3)` for RPC calls
+- `@rate_limit(calls_per_second=5)` for API calls
+
+## Troubleshooting
+
+### Common Issues
+
+**Connection Errors**
+- Verify RPC_URL is accessible
+- Check network connectivity
+- Validate CHAIN_ID matches network
+
+**Transaction Failures**  
+- Ensure sufficient gas funds in wallets
+- Verify token contract addresses
+- Check DEX contract permissions
+
+**Configuration Errors**
+- Validate JSON syntax in config files
+- Ensure all required fields are present
+- Verify address format (checksum)
+
+**Price Feed Issues**
+- Check DexScreener API accessibility
+- Verify pair address in API URL
+- Monitor rate limiting
+
+### Debug Commands
+
+```bash
+# Check configuration validity
+python -c "import json; print(json.load(open('config/config.json')))"
+
+# Test Web3 connection
+python -c "
+from web3 import Web3
+w3 = Web3(Web3.HTTPProvider('https://hyperion-testnet.metisdevops.link'))
+print('Connected:', w3.is_connected())
+"
+
+# Validate addresses
+python -c "
+from web3 import Web3
+addr = '0x4704759E4a426b29615e4841B092357460925eFf'
+print('Checksum:', Web3.to_checksum_address(addr))
+"
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Test changes in simulation mode
+4. Submit pull request with detailed description
+
+## License
+
+[License information to be added]
+
+## Support
+
+For technical issues:
+- Check logs in `logs/` directory
+- Review configuration files for errors
+- Verify environment variables
+- Test in simulation mode first
+
+For project-related questions:
+- Contact LazaiNetwork team
+- Join community channels
+- Review project documentation
+
+// filepath: codetoprompt.py
+import os
+
+EXCLUDE_DIRS = {'node_modules', 'venv', '__pycache__', '.git', 'archive', 'evm_env'}
+EXCLUDE_FILES = {'.DS_Store'}
+BINARY_EXTS = {'.png', '.jpg', '.jpeg', '.ico', '.gif', '.webp', '.svg', '.json', '.txt', '.csv'}
+
+def is_binary(filename):
+    ext = os.path.splitext(filename)[1].lower()
+    return ext in BINARY_EXTS
+
+def list_files(startpath):
+    structure = []
+    filepaths = []
+    for root, dirs, files in os.walk(startpath):
+        # Filter out excluded dirs
+        dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS and not d.startswith('.')]
+        level = root.replace(startpath, '').count(os.sep)
+        indent = '│   ' * level
+        folder = os.path.basename(root)
+        if level == 0:
+            structure.append(f"{folder}/")
+        else:
+            structure.append(f"{indent}├── {folder}/")
+        for f in sorted(files):
+            if f in EXCLUDE_FILES or f.startswith('.'):
+                continue
+            relpath = os.path.join(root, f)
+            structure.append(f"{indent}│   ├── {f}")
+            filepaths.append(relpath)
+    return structure, filepaths
+
+def main():
+    root = os.path.dirname(os.path.abspath(__file__))
+    structure, filepaths = list_files(root)
+    with open('repo_structure_and_scripts.txt', 'w', encoding='utf-8') as out:
+        out.write("Repository Structure\n\n")
+        for line in structure:
+            out.write(line + '\n')
+        out.write("\n\nFile Contents\n\n")
+        for path in filepaths:
+            rel = os.path.relpath(path, root)
+            if is_binary(path):
+                out.write(f"// filepath: {rel}\n(BINARY FILE SKIPPED)\n\n")
+                continue
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                out.write(f"// filepath: {rel}\n")
+                out.write(content)
+                if not content.endswith('\n'):
+                    out.write('\n')
+                out.write('\n')
+            except Exception as e:
+                out.write(f"// filepath: {rel}\n(COULD NOT READ FILE: {e})\n\n")
+
+if __name__ == "__main__":
+    main()
+
+// filepath: lt_main.sh
+#!/bin/bash
+
+# Navigate to the script's directory
+cd "$(dirname "$0")" || exit
+
+# Activate virtual environment
+source venv/bin/activate
+
+# Log timestamp
+echo "=== $(date '+%Y-%m-%d %H:%M:%S') ===" >> cron.log
+
+# Run main.py and append output to log
+python main.py >> cron.log 2>&1
+
+// filepath: main.py
+import csv, os, time, json, requests
+import logging
+from datetime import datetime
+from web3 import Web3
+from dotenv import load_dotenv
+from functools import wraps
+
+# Load environment variables from .env file
+load_dotenv()
+
+# ─── CONFIGURATION ────────────────────────────────────────────────────────
+RPC_URL = os.getenv('RPC_URL', "https://hyperion-testnet.metisdevops.link")
+CHAIN_ID = int(os.getenv('CHAIN_ID', 133717))
+DEX_ADDR = os.getenv('DEX_ADDR')
+ORACLE_OWNER_PK = os.getenv('ORACLE_OWNER_PK')
+DEXSCREENER_API = os.getenv('DEXSCREENER_API', "https://api.dexscreener.com/latest/dex/pairs/metis/0xb7af89d7fe88d4fa3c9b338a0063359196245eaa")
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+PRODUCTION = os.getenv('PRODUCTION', '0') == '1'
+
+# Configuration files (moved to 'config' directory)
+CONFIG_FILE = 'config/config.json'
+TOKENS_FILE = 'config/tokens.json'
+WALLETS_FILE = 'config/wallets.json'
+USERS_FILE = 'config/users.json'
+
+
+# Create logs directory
+os.makedirs('logs', exist_ok=True)
+
+# ABIs
+ERC20_ABI = json.loads("""[
+  {"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],
+   "name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"},
+  {"constant":true,"inputs":[{"name":"account","type":"address"}],
+   "name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"},
+  {"constant":true,"inputs":[],"name":"decimals",
+   "outputs":[{"name":"","type":"uint8"}],"type":"function"},
+  {"constant":true,"inputs":[],"name":"symbol",
+   "outputs":[{"name":"","type":"string"}],"type":"function"}
+]""")
+
+DEX_ABI = json.loads("""[
+  {"inputs":[{"name":"_gmetisToUSDC","type":"uint256"},{"name":"_usdcTogMetis","type":"uint256"}],
+   "name":"setPrices","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"name":"tokenInAddr","type":"address"},{"name":"amountIn","type":"uint256"}],
+   "name":"swap","outputs":[],"stateMutability":"nonpayable","type":"function"}
+]""")
+
+# Global caches to avoid repeated lookups
+token_contracts_cache = {}
+user_data_cache = {}
+price_cache = {}
+
+global_price_data = None
+
+
+class PriceCache:
+    def __init__(self, ttl_seconds=60):
+        self.cache = {}
+        self.ttl = ttl_seconds
+    
+    def get_price(self, symbol):
+        now = time.time()
+        if symbol in self.cache:
+            price, timestamp = self.cache[symbol]
+            if now - timestamp < self.ttl:
+                return price
+        return None
+    
+    def set_price(self, symbol, price):
+        self.cache[symbol] = (price, time.time())
+
+price_cache_instance = PriceCache()
+
+def rate_limit(calls_per_second=5):
+    """Rate limiting decorator to prevent RPC abuse."""
+    min_interval = 1.0 / calls_per_second
+    last_called = [0.0]
+    
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            elapsed = time.time() - last_called[0]
+            left_to_wait = min_interval - elapsed
+            if left_to_wait > 0:
+                time.sleep(left_to_wait)
+            ret = func(*args, **kwargs)
+            last_called[0] = time.time()
+            return ret
+        return wrapper
+    return decorator
+
+def setup_logging():
+    """Setup logging for main operations and errors."""
+    # Main log for successful operations
+    main_logger = logging.getLogger('main')
+    main_logger.setLevel(logging.INFO)
+    main_handler = logging.FileHandler('logs/trading_main.log')
+    main_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    main_handler.setFormatter(main_formatter)
+    main_logger.addHandler(main_handler)
+    
+    # Error log for failures
+    error_logger = logging.getLogger('errors')
+    error_logger.setLevel(logging.ERROR)
+    error_handler = logging.FileHandler('logs/trading_errors.log')
+    error_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    error_handler.setFormatter(error_formatter)
+    error_logger.addHandler(error_handler)
+    
+    return main_logger, error_logger
+
+def load_json_file(filepath):
+    """Load and validate JSON configuration files."""
+    try:
+        with open(filepath, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        error_logger.error(f"Configuration file {filepath} not found")
+        return None
+    except json.JSONDecodeError as e:
+        error_logger.error(f"Invalid JSON in {filepath}: {e}")
+        return None
+
+def get_token_info(symbol):
+    """Get token address and decimals from tokens.json with caching and checksum conversion."""
+    if symbol in token_contracts_cache:
+        return token_contracts_cache[symbol]
+    
+    tokens_data = load_json_file(TOKENS_FILE)
+    if not tokens_data or symbol not in tokens_data['tokens']:
+        error_logger.error(f"Token {symbol} not found in tokens.json")
+        return None
+    
+    token_info = tokens_data['tokens'][symbol].copy()  # Create a copy to avoid modifying original
+    
+    # Convert address to checksum format
+    try:
+        token_info['address'] = Web3.to_checksum_address(token_info['address'])
+    except Exception as e:
+        error_logger.error(f"Invalid address format for token {symbol}: {e}")
+        return None
+    
+    token_contracts_cache[symbol] = token_info
+    return token_info
+
+def get_user_data(user_id):
+    """Get user wallet and private key from configuration files with caching and checksum conversion."""
+    if user_id in user_data_cache:
+        return user_data_cache[user_id]
+    
+    # Load user mapping
+    users_data = load_json_file(USERS_FILE)
+    if not users_data or user_id not in users_data['users']:
+        error_logger.error(f"User {user_id} not found in users.json")
+        return None
+    
+    user_info = users_data['users'][user_id]
+    wallet_address = user_info['wallet_address']
+    
+    # Convert wallet address to checksum format
+    try:
+        wallet_address = Web3.to_checksum_address(wallet_address)
+    except Exception as e:
+        error_logger.error(f"Invalid wallet address format for user {user_id}: {e}")
+        return None
+    
+    # Load wallet private key
+    wallets_data = load_json_file(WALLETS_FILE)
+    # Use original address from config to find in wallets file, but also try checksum version
+    original_address = user_info['wallet_address']
+    
+    wallet_info = None
+    if original_address in wallets_data.get('wallets', {}):
+        wallet_info = wallets_data['wallets'][original_address]
+    elif wallet_address in wallets_data.get('wallets', {}):
+        wallet_info = wallets_data['wallets'][wallet_address]
+    
+    if not wallet_info:
+        error_logger.error(f"Wallet {wallet_address} not found in wallets.json")
+        return None
+    
+    user_data = {
+        'wallet_address': wallet_address,  # Store as checksum address
+        'private_key': wallet_info['private_key'],
+        'telegram_chat_id': user_info.get('telegram_chat_id'),
+        'username': user_info.get('username', user_id)
+    }
+    
+    user_data_cache[user_id] = user_data
+    return user_data
+
+def send_telegram_message(message, chat_id):
+    """Send message to specific Telegram chat."""
+    if not TELEGRAM_BOT_TOKEN or not chat_id:
+        error_logger.error("Telegram credentials not configured")
+        return False
+    
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        data = {
+            'chat_id': chat_id,
+            'text': message,
+            'parse_mode': 'HTML'
+        }
+        response = requests.post(url, data=data, timeout=10)
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        error_logger.error(f"Failed to send Telegram message: {e}")
+        return False
+
+# Replace the existing fetch_prices_from_dexscreener function with this version:
+@rate_limit(calls_per_second=3)
+def fetch_prices_from_dexscreener():
+    """Fetch current prices from DexScreener API and calculate contract prices."""
+    global global_price_data
+    
+    # Return cached data if available
+    if global_price_data is not None:
+        return global_price_data
+    
+    try:
+        res = requests.get(DEXSCREENER_API, timeout=10)
+        res.raise_for_status()
+        data = res.json()
+        price_usdc = float(data['pair']['priceUsd'])
+        
+        # Both tokens are 18 decimals, contract expects 1e18 scaling for price ratios
+        price_gmetis_to_usdc = int(price_usdc * 1e18)  # Contract expects 1e18 scaling
+        price_usdc_to_gmetis = int((1 / price_usdc) * 1e18)  # Contract expects 1e18 scaling
+
+        main_logger.info(f"Fetched price from DexScreener: tgMetis/USD = ${price_usdc:.10f}")
+        
+        # Cache the result globally
+        global_price_data = (price_gmetis_to_usdc, price_usdc_to_gmetis, price_usdc)
+        return global_price_data
+        
+    except Exception as e:
+        error_logger.error(f"Failed to fetch prices from DexScreener: {e}")
+        return None, None, None
+
+# Add this function to reset the cache at the start of each main() run:
+def reset_price_cache():
+    """Reset global price cache for new script run."""
+    global global_price_data
+    global_price_data = None
+
+
+
+@rate_limit(calls_per_second=3)
+def update_oracle_prices(w3, price_gmetis_to_usdc, price_usdc_to_gmetis):
+    """Update DEX oracle prices using owner account with checksum address handling."""
+    try:
+        owner = w3.eth.account.from_key(ORACLE_OWNER_PK)
+        
+        # Ensure DEX address is in checksum format
+        dex_address = Web3.to_checksum_address(DEX_ADDR)
+        dex = w3.eth.contract(address=dex_address, abi=DEX_ABI)
+        
+        nonce = w3.eth.get_transaction_count(owner.address)
+        tx = dex.functions.setPrices(price_gmetis_to_usdc, price_usdc_to_gmetis).build_transaction({
+            "chainId": CHAIN_ID,
+            "from": owner.address,
+            "nonce": nonce,
+            "gas": 200_000,
+            "gasPrice": w3.to_wei("5", "gwei")
+        })
+        
+        if PRODUCTION:
+            signed = owner.sign_transaction(tx)
+            tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+            receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+            main_logger.info(f"Oracle prices updated on-chain: {receipt.transactionHash.hex()}")
+        else:
+            main_logger.info(f"SIMULATION: Oracle prices would be updated")
+        
+        return True
+    except Exception as e:
+        error_logger.error(f"Failed to update oracle prices: {e}")
+        return False
+
+def get_pair_symbol(base_asset, quote_asset):
+    """Construct trading pair symbol from base and quote assets."""
+    return f"{base_asset}_{quote_asset}"
+
+def get_price(base_asset, quote_asset):
+    """Return (date_str, time_str, price) for given trading pair."""
+    try:
+        symbol = get_pair_symbol(base_asset, quote_asset)
+        
+        # Check cache first
+        cached_price = price_cache_instance.get_price(symbol)
+        if cached_price is not None:
+            return time.strftime("%y%m%d"), time.strftime("%H%M%S"), cached_price
+        
+        # For tgMetis/tgUSDC pair, fetch from DexScreener
+        if (base_asset == "tgMetis" and quote_asset == "tgUSDC") or \
+           (base_asset == "tgUSDC" and quote_asset == "tgMetis"):
+            _, _, price_usd = fetch_prices_from_dexscreener()
+            if price_usd is None:
+                raise Exception("Failed to fetch price from DexScreener")
+            
+            # Return price based on direction
+            if base_asset == "tgMetis":
+                price = price_usd  # tgMetis price in USD (treating tgUSDC as USD)
+            else:
+                price = 1.0 / price_usd  # tgUSDC price in tgMetis
+            
+            price_cache_instance.set_price(symbol, price)
+            return time.strftime("%y%m%d"), time.strftime("%H%M%S"), price
+        else:
+            raise Exception(f"Unsupported trading pair: {base_asset}/{quote_asset}")
+            
+    except Exception as e:
+        raise Exception(f"Failed to get price for {base_asset}/{quote_asset}: {e}")
+
+@rate_limit(calls_per_second=3)
+def get_balances(w3, base_asset, quote_asset, wallet_address):
+    """Return (base_balance, quote_balance) for given assets and wallet."""
+    try:
+        base_token_info = get_token_info(base_asset)
+        quote_token_info = get_token_info(quote_asset)
+        
+        if not base_token_info or not quote_token_info:
+            raise Exception("Token information not found")
+        
+        base_contract = w3.eth.contract(address=base_token_info['address'], abi=ERC20_ABI)
+        quote_contract = w3.eth.contract(address=quote_token_info['address'], abi=ERC20_ABI)
+        
+        base_balance_raw = base_contract.functions.balanceOf(wallet_address).call()
+        quote_balance_raw = quote_contract.functions.balanceOf(wallet_address).call()
+        
+        base_balance = base_balance_raw / (10 ** base_token_info['decimals'])
+        quote_balance = quote_balance_raw / (10 ** quote_token_info['decimals'])
+        
+        return base_balance, quote_balance
+    except Exception as e:
+        raise Exception(f"Failed to get balances for {base_asset}/{quote_asset}: {e}")
+
+def calculate_total_balance_usd(base_asset, quote_asset, base_balance, quote_balance, current_price):
+    """Calculate total balance in USD using token decimals from configuration."""
+    try:
+        if base_asset == "tgMetis" and quote_asset == "tgUSDC":
+            # tgMetis value in USD (current_price is tgMetis price in USD)
+            base_value_usd = base_balance * current_price
+            # tgUSDC is pegged to USD (1:1)
+            quote_value_usd = quote_balance
+            # Return individual USD prices for logging
+            return base_value_usd + quote_value_usd, current_price, 1.0
+        elif base_asset == "tgUSDC" and quote_asset == "tgMetis":
+            # tgUSDC is pegged to USD (1:1)  
+            base_value_usd = base_balance
+            # tgMetis value in USD (1/current_price since current_price is tgUSDC/tgMetis)
+            quote_value_usd = quote_balance * (1.0 / current_price)
+            return base_value_usd + quote_value_usd, 1.0, (1.0 / current_price)
+        else:
+            # For other pairs, implement appropriate conversion
+            base_value_usd = 0.0
+            quote_value_usd = 0.0
+            return base_value_usd + quote_value_usd, 0.0, 0.0
+    except Exception as e:
+        error_logger.error(f"Error calculating total balance for {base_asset}/{quote_asset}: {e}")
+        return 0.0, 0.0, 0.0
+
+def get_last_id(file_path):
+    """Return next ID (1-based) by scanning existing CSV, zero-pad to 6 digits."""
+    if not os.path.isfile(file_path):
+        return 1
+    try:
+        with open(file_path, "r", newline="") as f:
+            rows = list(csv.reader(f))
+        if len(rows) < 2:
+            return 1
+        return int(rows[-1][0]) + 1
+    except (ValueError, IndexError):
+        return 1
+
+def store_price(base_asset, quote_asset, date_str, time_str, price, base_flag, user_id):
+    """Append to BASE_QUOTE_USERID.csv: ID,Date,Time,Price,Base."""
+    fn = f"logs/{base_asset}_{quote_asset}_{user_id}.csv"
+    row_id = get_last_id(fn)
+    row = [f"{row_id:06d}", date_str, time_str, f"{price:.10f}", base_flag]
+    is_new = not os.path.isfile(fn)
+
+    with open(fn, "a", newline="") as f:
+        w = csv.writer(f)
+        if is_new:
+            w.writerow(["ID", "Date", "Time", "Price", "Base"])
+        w.writerow(row)
+
+def get_base_price(base_asset, quote_asset, user_id):
+    """Return the last logged Base price, or None if none yet."""
+    fn = f"logs/{base_asset}_{quote_asset}_{user_id}.csv"
+    if not os.path.isfile(fn):
+        return None
+
+    try:
+        with open(fn, "r", newline="") as f:
+            rows = list(csv.reader(f))
+        base_rows = [r for r in rows[1:] if len(r) > 4 and r[4] == "1"]
+        if not base_rows:
+            return None
+        return float(base_rows[-1][3])
+    except (ValueError, IndexError):
+        return None
+
+def get_last_trade_action(base_asset, quote_asset, user_id):
+    """Get the last trade action and consecutive count for multiplier calculation."""
+    fn = f"logs/{base_asset}_{quote_asset}_{user_id}_trades.csv"
+    if not os.path.isfile(fn):
+        return None, 0
+    
+    try:
+        with open(fn, "r", newline="") as f:
+            rows = list(csv.reader(f))
+        
+        if len(rows) < 2:
+            return None, 0
+        
+        last_row = rows[-1]
+        if len(last_row) < 17:  # Updated for new format with tx_hash
+            return last_row[4] if len(last_row) > 4 else None, 0
+        
+        last_action = last_row[4]
+        consecutive_count = int(last_row[15])
+        
+        return last_action, consecutive_count
+        
+    except (ValueError, IndexError) as e:
+        error_logger.error(f"Error reading last trade for {base_asset}/{quote_asset}/{user_id}: {e}")
+        return None, 0
+
+def calculate_multiplied_trade_percentage(base_percentage, multiplier, current_action, last_action, last_consecutive_count):
+    """Calculate trade percentage with multiplier for consecutive same-direction trades."""
+    if last_action == current_action:
+        consecutive_count = last_consecutive_count + 1
+        multiplied_percentage = base_percentage * (multiplier ** consecutive_count)
+        actual_percentage = min(multiplied_percentage, 0.5)  # Cap at 50%
+        return actual_percentage, consecutive_count
+    else:
+        return base_percentage, 0
+
+def log_trade(base_asset, quote_asset, user_id, action, date_str, time_str, price, qty, 
+              base_balance, quote_balance, total_balance_usd, base_usd_price, quote_usd_price,
+              consecutive_count, actual_trade_percentage, tx_hash="SIMULATION"):
+    """Append to BASE_QUOTE_USERID_trades.csv with all trade details including tx_hash."""
+    fn = f"logs/{base_asset}_{quote_asset}_{user_id}_trades.csv"
+    row_id = get_last_id(fn)
+    
+    base_value_usd = base_balance * base_usd_price
+    quote_value_usd = quote_balance * quote_usd_price
+    trade_value_usd = qty * price * quote_usd_price if action == "SELL" else qty * base_usd_price
+    
+    row = [
+        f"{row_id:06d}",
+        date_str, time_str, user_id,
+        action,
+        f"{price:.10f}",
+        f"{qty:.10f}",
+        f"{base_balance:.10f}",
+        f"{quote_balance:.10f}",
+        f"{base_usd_price:.10f}",
+        f"{quote_usd_price:.10f}",
+        f"{base_value_usd:.2f}",
+        f"{quote_value_usd:.2f}",
+        f"{trade_value_usd:.2f}",
+        f"{total_balance_usd:.2f}",
+        f"{consecutive_count}",
+        f"{actual_trade_percentage:.10f}",
+        tx_hash
+    ]
+    is_new = not os.path.isfile(fn)
+
+    with open(fn, "a", newline="") as f:
+        w = csv.writer(f)
+        if is_new:
+            w.writerow([
+                "ID", "Date", "Time", "UserID", "Action",
+                "Price", "Quantity",
+                f"{base_asset}_Balance", f"{quote_asset}_Balance",
+                f"{base_asset}_USD_Price", f"{quote_asset}_USD_Price",
+                f"{base_asset}_USD_Value", f"{quote_asset}_USD_Value",
+                "Trade_USD_Value", "Total_Balance_USD",
+                "Consecutive_Count", "Actual_Trade_Percentage", "TX_Hash"
+            ])
+        w.writerow(row)
+
+@rate_limit(calls_per_second=2)
+def execute_dex_trade(w3, base_asset, quote_asset, action, quantity, user_data):
+    """Execute trade on DEX with proper checksum address handling and dynamic decimal support."""
+    try:
+        base_token_info = get_token_info(base_asset)
+        quote_token_info = get_token_info(quote_asset)
+        user_account = w3.eth.account.from_key(user_data['private_key'])
+        
+        if action == "BUY":
+            # Buying base asset with quote asset
+            # quantity is the amount of base asset to buy
+            # We need to calculate how much quote asset to send
+            _, _, current_price = get_price(base_asset, quote_asset)
+            quote_amount_needed = quantity * current_price  # Amount of quote asset needed
+            
+            token_in_info = quote_token_info
+            token_out_info = base_token_info
+            amount_in = int(quote_amount_needed * (10 ** quote_token_info['decimals']))
+        else:  # SELL
+            # Selling base asset for quote asset
+            # quantity is the amount of base asset to sell
+            token_in_info = base_token_info
+            token_out_info = quote_token_info
+            amount_in = int(quantity * (10 ** base_token_info['decimals']))
+        
+        # Addresses are already in checksum format from get_token_info
+        token_in_contract = w3.eth.contract(address=token_in_info['address'], abi=ERC20_ABI)
+        dex_address = Web3.to_checksum_address(DEX_ADDR)
+        dex_contract = w3.eth.contract(address=dex_address, abi=DEX_ABI)
+        
+        if not PRODUCTION:
+            return {
+                "status": "SIMULATION",
+                "action": action,
+                "quantity": quantity,
+                "token_in": token_in_info['symbol'],
+                "token_out": token_out_info['symbol'],
+                "tx_hash": "SIMULATION"
+            }
+        
+        # Step 1: Approve token
+        nonce = w3.eth.get_transaction_count(user_account.address)
+        approve_tx = token_in_contract.functions.approve(dex_address, amount_in).build_transaction({
+            "chainId": CHAIN_ID,
+            "from": user_account.address,
+            "nonce": nonce,
+            "gas": 100_000,
+            "gasPrice": w3.to_wei("5", "gwei")
+        })
+        
+        signed_approve = user_account.sign_transaction(approve_tx)
+        approve_hash = w3.eth.send_raw_transaction(signed_approve.raw_transaction)
+        w3.eth.wait_for_transaction_receipt(approve_hash)
+        
+        # Step 2: Execute swap
+        nonce = w3.eth.get_transaction_count(user_account.address)
+        swap_tx = dex_contract.functions.swap(token_in_info['address'], amount_in).build_transaction({
+            "chainId": CHAIN_ID,
+            "from": user_account.address,
+            "nonce": nonce,
+            "gas": 200_000,
+            "gasPrice": w3.to_wei("5", "gwei")
+        })
+        
+        signed_swap = user_account.sign_transaction(swap_tx)
+        swap_hash = w3.eth.send_raw_transaction(signed_swap.raw_transaction)
+        receipt = w3.eth.wait_for_transaction_receipt(swap_hash)
+        
+        tx_hash_hex = receipt.transactionHash.hex()
+        main_logger.info(f"DEX trade executed: {tx_hash_hex}")
+        return {"status": "SUCCESS", "tx_hash": tx_hash_hex}
+        
+    except Exception as e:
+        error_logger.error(f"Failed to execute DEX trade: {e}")
+        raise
+
+def calculate_trade_amounts(action, base_balance, quote_balance, price, trade_percentage, 
+                          max_amount, minimum_amount, base_usd_price, quote_usd_price):
+    """Calculate trade quantity and value, applying limits."""
+    if action == "SELL":
+        # Selling base asset: quantity is amount of base asset to sell
+        qty_from_percentage = base_balance * trade_percentage
+        print(f"qty_from_percentage: {qty_from_percentage}")
+        print(f"base_usd_price: {base_usd_price}, trade_percentage: {trade_percentage}")
+        max_qty_allowed = (max_amount / base_usd_price) if max_amount > 0 else float('inf')
+        qty = min(qty_from_percentage, max_qty_allowed)
+        trade_value_usd = qty * base_usd_price
+        print(qty)
+    else:  # BUY
+        # Buying base asset: calculate how much quote asset we can spend, then convert to base quantity
+        quote_to_trade = quote_balance * trade_percentage
+        quote_max_allowed = (max_amount / quote_usd_price) if max_amount > 0 else float('inf')
+        quote_to_trade = min(quote_to_trade, quote_max_allowed)
+        print(f"quote_to_trade: {quote_to_trade}")
+        print(f"quote_usd_price: {quote_usd_price}, trade_percentage: {trade_percentage}")
+        print(f"quote_balance: {quote_balance}, price: {price}")
+        
+        # Convert quote amount to base quantity using current price
+        qty = quote_to_trade / price  # This is the amount of base asset we'll receive
+        print(qty)
+        trade_value_usd = quote_to_trade * quote_usd_price
+    
+    meets_minimum = trade_value_usd >= minimum_amount
+    return qty, trade_value_usd, meets_minimum
+
+def calculate_new_balances(action, base_balance, quote_balance, qty, price):
+    """Calculate balances after trade execution."""
+    if action == "SELL":
+        new_base_balance = base_balance - qty
+        new_quote_balance = quote_balance + (qty * price)
+    else:  # BUY
+        new_base_balance = base_balance + qty
+        new_quote_balance = quote_balance - (qty * price)
+    
+    return new_base_balance, new_quote_balance
+
+def send_trade_notification(user_data, base_asset, quote_asset, action, qty, trade_value_usd, 
+                           base_price, current_price, move_pct, new_base_balance, new_quote_balance, 
+                           total_balance_usd, date_str, consecutive_count, actual_trade_percentage, tx_hash="SIMULATION"):
+    """Send Telegram notification for executed trade."""
+    mode_text = "🔴 PRODUCTION" if PRODUCTION else "🟡 SIMULATION"
+    direction_emoji = "📉" if action == "BUY" else "📈"
+    
+    # Add multiplier info if consecutive trades
+    multiplier_text = ""
+    if consecutive_count > 0:
+        multiplier_text = f"\n<b>🔥 Consecutive #{consecutive_count + 1}:</b> {actual_trade_percentage*100:.2f}% trade size"
+    
+    # Add transaction hash info
+    tx_info = f"\n<b>🔗 TX Hash:</b> <code>{tx_hash}</code>" if tx_hash != "SIMULATION" else ""
+    
+    message = f"""
+{mode_text} TRADE EXECUTED {direction_emoji}
+
+<b>Pair:</b> {base_asset}/{quote_asset}
+<b>Action:</b> {action} {base_asset}
+<b>Amount:</b> {qty:.10f} {base_asset}
+<b>Trade Value:</b> ${trade_value_usd:.2f}{multiplier_text}{tx_info}
+
+<b>Base Price:</b> {base_price:.10f} {quote_asset} ({date_str})
+<b>Current Price:</b> {current_price:.10f} {quote_asset}
+<b>Price Change:</b> {move_pct*100:+.2f}%
+
+<b>Current Balances:</b>
+• {base_asset}: {new_base_balance:.10f}
+• {quote_asset}: {new_quote_balance:.10f}
+• <b>Total USD: ${total_balance_usd:.2f}</b>
+"""
+    
+    chat_id = user_data.get('telegram_chat_id')
+    if chat_id:
+        send_telegram_message(message, chat_id)
+
+def process_trade_signal(w3, base_asset, quote_asset, user_data, action, date_str, time_str, price, 
+                        base_balance, quote_balance, base_trade_percentage, multiplier, max_amount, 
+                        minimum_amount, decimal_places, base_price, move_pct, base_usd_price, quote_usd_price):
+    """Process a trade signal (BUY or SELL) with multiplier logic."""
+    
+    user_id = user_data.get('username', 'unknown')
+    
+    # Get last trade info for multiplier calculation
+    last_action, last_consecutive_count = get_last_trade_action(base_asset, quote_asset, user_id)
+    
+    # Calculate actual trade percentage with multiplier
+    actual_trade_percentage, consecutive_count = calculate_multiplied_trade_percentage(
+        base_trade_percentage, multiplier, action, last_action, last_consecutive_count
+    )
+    
+    # Calculate trade amounts using the multiplied percentage
+    qty, trade_value_usd, meets_minimum = calculate_trade_amounts(
+        action, base_balance, quote_balance, price, actual_trade_percentage, max_amount, minimum_amount,
+        base_usd_price, quote_usd_price
+    )
+    
+    if not meets_minimum:
+        # Trade too small, just update base
+        store_price(base_asset, quote_asset, date_str, time_str, price, base_flag=1, user_id=user_id)
+        main_logger.info(f"[{base_asset}/{quote_asset}/{user_id}] Trade too small (${trade_value_usd:.2f} < ${minimum_amount}) -> new base set, no trade")
+        return True
+    
+    # Calculate new balances
+    new_base_balance, new_quote_balance = calculate_new_balances(action, base_balance, quote_balance, qty, price)
+    total_balance_usd, _, _ = calculate_total_balance_usd(base_asset, quote_asset, new_base_balance, new_quote_balance, price)
+    
+    # Execute trade
+    try:
+        order = execute_dex_trade(w3, base_asset, quote_asset, action, qty, user_data)
+        tx_hash = order.get("tx_hash", "SIMULATION")
+        
+        # Log trade with multiplier info and tx_hash, then update base price
+        log_trade(base_asset, quote_asset, user_id, action, date_str, time_str, price, qty, 
+                 new_base_balance, new_quote_balance, total_balance_usd, base_usd_price, quote_usd_price,
+                 consecutive_count, actual_trade_percentage, tx_hash)
+        store_price(base_asset, quote_asset, date_str, time_str, price, base_flag=1, user_id=user_id)
+        
+        # Send notification with multiplier info and tx_hash
+        send_trade_notification(user_data, base_asset, quote_asset, action, qty, trade_value_usd, base_price, price, move_pct,
+                              new_base_balance, new_quote_balance, total_balance_usd, date_str, consecutive_count, actual_trade_percentage, tx_hash)
+        
+        action_text = f"{'SOLD' if action == 'SELL' else 'BOUGHT'}" if PRODUCTION else f"SIMULATED {action}"
+        multiplier_info = f" (consecutive #{consecutive_count + 1}, {actual_trade_percentage*100:.2f}%)" if consecutive_count > 0 else ""
+        main_logger.info(f"[{base_asset}/{quote_asset}/{user_id}] {action_text} {qty:.10f} for ${trade_value_usd:.2f} at {price:.10f}{multiplier_info} -> new base, TX: {tx_hash}")
+
+        return True
+        
+    except Exception as e:
+        error_logger.error(f"[{base_asset}/{quote_asset}/{user_id}] Failed to execute {action} trade: {e}")
+        return False
+
+def process_trading_pair(w3, pair_config):
+    """Process a single trading pair based on its configuration."""
+    base_asset = pair_config['symbol1']
+    quote_asset = pair_config['symbol2']
+    base_trade_percentage = pair_config['trade_percentage']
+    multiplier = pair_config.get('multiplier', 1.1)
+    trigger_percentage = pair_config['trigger_percentage']
+    max_amount = pair_config.get('max_amount', 0)
+    minimum_amount = pair_config.get('minimum_amount', 0)
+    decimal_places = pair_config.get('decimal', 6)
+    user_id = pair_config['userID']
+    
+    # Get user data
+    user_data = get_user_data(user_id)
+    if not user_data:
+        error_logger.error(f"Failed to get user data for {user_id}")
+        return False
+    
+    try:
+        # Get price data first (no oracle update yet)
+        price_gmetis_to_usdc, price_usdc_to_gmetis, price_usd = fetch_prices_from_dexscreener()
+        if price_gmetis_to_usdc is None:
+            error_logger.error(f"Failed to fetch prices from DexScreener")
+            return False
+        
+        date_str, time_str, price = get_price(base_asset, quote_asset)
+        base_price = get_base_price(base_asset, quote_asset, user_data.get('username', 'unknown'))
+
+        # If no base yet → set it, no trade
+        if base_price is None:
+            store_price(base_asset, quote_asset, date_str, time_str, price, base_flag=1, user_id=user_data.get('username', 'unknown'))
+            main_logger.info(f"[{base_asset}/{quote_asset}/{user_id}] Base price initialized to {price:.10f}")
+            return True
+
+        move_pct = (price - base_price) / base_price
+        base_balance, quote_balance = get_balances(w3, base_asset, quote_asset, user_data['wallet_address'])
+        
+        # Calculate USD values
+        total_balance_usd, base_usd_price, quote_usd_price = calculate_total_balance_usd(
+            base_asset, quote_asset, base_balance, quote_balance, price
+        )
+
+        # Check for trade signals - ONLY UPDATE ORACLE IF TRIGGER IS HIT
+        if move_pct >= trigger_percentage:
+            # Price increased → SELL base asset
+            # Update oracle before trade
+            update_oracle_prices(w3, price_gmetis_to_usdc, price_usdc_to_gmetis)
+            return process_trade_signal(w3, base_asset, quote_asset, user_data, "SELL", date_str, time_str, price, 
+                                      base_balance, quote_balance, base_trade_percentage, multiplier, max_amount, minimum_amount, 
+                                      decimal_places, base_price, move_pct, base_usd_price, quote_usd_price)
+            
+        elif move_pct <= -trigger_percentage:
+            # Price decreased → BUY base asset
+            # Update oracle before trade
+            update_oracle_prices(w3, price_gmetis_to_usdc, price_usdc_to_gmetis)
+            return process_trade_signal(w3, base_asset, quote_asset, user_data, "BUY", date_str, time_str, price, 
+                                      base_balance, quote_balance, base_trade_percentage, multiplier, max_amount, minimum_amount, 
+                                      decimal_places, base_price, move_pct, base_usd_price, quote_usd_price)
+        else:
+            # No trade (within trigger range) - NO ORACLE UPDATE
+            store_price(base_asset, quote_asset, date_str, time_str, price, base_flag=0, user_id=user_data.get('username', 'unknown'))
+            main_logger.info(f"[{base_asset}/{quote_asset}/{user_id}] No trade. Price logged at {price:.10f}")
+            return True
+
+    except Exception as e:
+        error_logger.error(f"[{base_asset}/{quote_asset}/{user_id}] Error processing trading pair: {str(e)}")
+        return False
+def validate_trading_pair(pair_config):
+    """Validate a trading pair configuration before processing."""
+    required_fields = ['symbol1', 'symbol2', 'trade_percentage', 'trigger_percentage', 'userID']
+    for field in required_fields:
+        if field not in pair_config:
+            error_logger.error(f"Missing required field '{field}' in trading pair config")
+            return False
+    
+    # Validate percentage values
+    if not (0 < pair_config['trade_percentage'] <= 1):
+        error_logger.error(f"Invalid trade_percentage: {pair_config['trade_percentage']}. Must be between 0 and 1")
+        return False
+    
+    if not (0 < pair_config['trigger_percentage'] <= 1):
+        error_logger.error(f"Invalid trigger_percentage: {pair_config['trigger_percentage']}. Must be between 0 and 1")
+        return False
+    
+    return True
+
+def load_config():
+    """Load trading pairs configuration from JSON file."""
+    config_data = load_json_file(CONFIG_FILE)
+    if not config_data or 'trading_pairs' not in config_data:
+        error_logger.error("No trading pairs found in configuration")
+        return []
+    
+    main_logger.info(f"Loaded configuration for {len(config_data['trading_pairs'])} trading pairs")
+    return config_data['trading_pairs']
+
+def validate_and_fix_addresses():
+    """Validate and convert all addresses to checksum format at startup."""
+    global DEX_ADDR
+    
+    try:
+        # Fix DEX address
+        DEX_ADDR = Web3.to_checksum_address(DEX_ADDR)
+        main_logger.info(f"DEX address converted to checksum: {DEX_ADDR}")
+    except Exception as e:
+        error_logger.error(f"Invalid DEX address format: {DEX_ADDR}, error: {e}")
+        return False
+    
+    # Validate tokens.json addresses
+    tokens_data = load_json_file(TOKENS_FILE)
+    if tokens_data and 'tokens' in tokens_data:
+        for symbol, token_info in tokens_data['tokens'].items():
+            try:
+                checksum_addr = Web3.to_checksum_address(token_info['address'])
+                main_logger.info(f"Token {symbol} address validated: {checksum_addr}")
+            except Exception as e:
+                error_logger.error(f"Invalid address for token {symbol}: {token_info['address']}, error: {e}")
+                return False
+    
+    # Validate wallet addresses
+    users_data = load_json_file(USERS_FILE)
+    if users_data and 'users' in users_data:
+        for user_id, user_info in users_data['users'].items():
+            try:
+                checksum_addr = Web3.to_checksum_address(user_info['wallet_address'])
+                main_logger.info(f"User {user_id} wallet address validated: {checksum_addr}")
+            except Exception as e:
+                error_logger.error(f"Invalid wallet address for user {user_id}: {user_info['wallet_address']}, error: {e}")
+                return False
+    
+    return True
+
+def main():
+    """Main function to process all trading pairs."""
+    global main_logger, error_logger
+    main_logger, error_logger = setup_logging()
+    
+    # Reset price cache for this run
+    reset_price_cache()
+    
+    # Validate environment variables
+    if not RPC_URL:
+        error_logger.error("Missing RPC_URL environment variable")
+        print("ERROR: Please set RPC_URL environment variable")
+        return
+
+    # Validate and fix all addresses first
+    if not validate_and_fix_addresses():
+        error_logger.error("Address validation failed")
+        print("ERROR: Invalid addresses found in configuration")
+        return
+
+    # Initialize Web3 connection
+    try:
+        w3 = Web3(Web3.HTTPProvider(RPC_URL))
+        if not w3.is_connected():
+            raise Exception("Failed to connect to RPC")
+        main_logger.info(f"Successfully connected to Web3 RPC: {RPC_URL}")
+    except Exception as e:
+        error_logger.error(f"Failed to connect to Web3: {e}")
+        print(f"ERROR: Cannot connect to Web3: {e}")
+        return
+
+    # Load configuration
+    trading_pairs = load_config()
+    if not trading_pairs:
+        error_logger.error("No trading pairs loaded from configuration")
+        print("ERROR: No trading pairs found in configuration")
+        return
+
+    # Validate all trading pairs before processing
+    valid_pairs = []
+    for pair_config in trading_pairs:
+        if validate_trading_pair(pair_config):
+            valid_pairs.append(pair_config)
+        else:
+            error_logger.error(f"Invalid configuration for pair: {pair_config}")
+
+    if not valid_pairs:
+        error_logger.error("No valid trading pairs found")
+        print("ERROR: No valid trading pairs found")
+        return
+
+    mode_text = "PRODUCTION" if PRODUCTION else "SIMULATION"
+    main_logger.info(f"Starting DEX trading session in {mode_text} mode with {len(valid_pairs)} pairs")
+    
+    successful_pairs = 0
+    failed_pairs = 0
+
+    # Process each valid trading pair
+    for pair_config in valid_pairs:
+        base_asset = pair_config.get('symbol1', 'UNKNOWN')
+        quote_asset = pair_config.get('symbol2', 'UNKNOWN')
+        user_id = pair_config.get('userID', 'UNKNOWN')
+        main_logger.info(f"Processing {base_asset}/{quote_asset} for user {user_id}...")
+        
+        try:
+            if process_trading_pair(w3, pair_config):
+                successful_pairs += 1
+                main_logger.info(f"[{base_asset}/{quote_asset}/{user_id}] Successfully processed")
+            else:
+                failed_pairs += 1
+                error_logger.error(f"[{base_asset}/{quote_asset}/{user_id}] Processing failed")
+        except Exception as e:
+            failed_pairs += 1
+            error_logger.error(f"[{base_asset}/{quote_asset}/{user_id}] Unexpected error: {e}")
+        
+        # Add delay between pairs to respect rate limits
+        time.sleep(1)
+
+    # Summary
+    main_logger.info(f"DEX trading session completed: {successful_pairs} successful, {failed_pairs} failed")
+    
+    if failed_pairs > 0:
+        print(f"Check trading_errors.log for details on {failed_pairs} failed pairs")
+    
+    print(f"DEX trading session completed successfully. {successful_pairs} pairs processed, {failed_pairs} failed.")
+
+
+if __name__ == "__main__":
+    main()
+
+// filepath: requirements.txt
+(BINARY FILE SKIPPED)
+
+// filepath: config\config.json.example
+{
+  "trading_pairs": [
+    {
+      "symbol1": "tgMetis",
+      "symbol2": "tgUSDC",
+      "trade_percentage": 0.1,
+      "trigger_percentage": 0.1,
+      "max_amount": 50.0,
+      "minimum_amount": 1.0,
+      "decimal": 3,
+      "multiplier": 2,
+      "userID": "user1"
+    }
+  ]
+}
+
+// filepath: config\tokens.json.example
+{
+  "tokens": {
+    "tgMetis": {
+      "address": "0x69Dd3C70Ae76256De7Ec9AF5893DEE49356D45fc",
+      "decimals": 18,
+      "symbol": "tgMetis"
+    },
+    "tgUSDC": {
+      "address": "0x6Eb66c8bBD57FdA71ecCAAc40a56610C2CA8FDb8",
+      "decimals": 18,
+      "symbol": "tgUSDC"
+    }
+  }
+}
+
+// filepath: config\users.json.example
+{
+  "users": {
+    "123123123": {
+      "wallet_address": "0x123123123123123123132",
+      "telegram_chat_id": "123123123",
+      "username": "exampleuser1"
+    },
+    "456456456": {
+      "wallet_address": "0x456456456456456456456",
+      "telegram_chat_id": "456456456",
+      "username": "exampleuser2"
+    }
+  }
+}
+
+// filepath: config\wallets.json.example
+{
+  "wallets": {
+    "0x123123123123121233": {
+      "private_key": "12312312312312312312313123123123",
+      "wallet_name": "Owner Wallet"
+    },
+    "0x123123123123123123": {
+      "private_key": "12312312312312312312313123123123",
+      "wallet_name": "User Wallet"
+    }
+  }
+}
+
+// filepath: plugins\LT_bot.py
+from telegram import BotCommand
+import json
+import os
+import random
+import pathlib
+from pathlib import Path
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup
+)
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    ConversationHandler,
+    filters,
+    ContextTypes
+)
+from dotenv import load_dotenv
+from web3 import Web3
+
+# Load environment variables
+BASE_PATH = pathlib.Path(__file__).parent.parent  # adjust as needed
+load_dotenv(dotenv_path=BASE_PATH / ".env")
+
+# Get bot token and RPC URL
+bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+RPC_URL = os.getenv('RPC_URL', "https://hyperion-testnet.metisdevops.link")
+
+# File paths
+PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent
+USERS_FILE = PROJECT_ROOT / "config" / "users.json"
+CONFIG_PATH = PROJECT_ROOT / "config" / "config.json"
+TOKENS_FILE = PROJECT_ROOT / "config" / "tokens.json"
+
+PLUGIN_DIR = pathlib.Path(__file__).resolve().parent
+ADDRESSES_FILE = PLUGIN_DIR / "addresses.txt"
+
+# Conversation states
+PAIR_SELECT, RISK, TRADE_PERCENTAGE_CONFIRM, TRIGGER_PERCENTAGE_CONFIRM, MAX_AMOUNT_CONFIRM, FINALIZE = range(6)
+
+# ERC20 ABI for balance queries
+ERC20_ABI = json.loads("""[
+  {"constant":true,"inputs":[{"name":"account","type":"address"}],
+   "name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"},
+  {"constant":true,"inputs":[],"name":"decimals",
+   "outputs":[{"name":"","type":"uint8"}],"type":"function"},
+  {"constant":true,"inputs":[],"name":"symbol",
+   "outputs":[{"name":"","type":"string"}],"type":"function"}
+]""")
+
+# User management functions
+def load_users():
+    if not os.path.exists(USERS_FILE):
+        return {"users": {}}
+    with open(USERS_FILE, "r") as f:
+        return json.load(f)
+
+def save_users(data):
+    os.makedirs(os.path.dirname(USERS_FILE), exist_ok=True)
+    with open(USERS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+def load_addresses():
+    if not os.path.exists(ADDRESSES_FILE):
+        return []
+    with open(ADDRESSES_FILE, "r") as f:
+        return json.load(f)
+
+def save_addresses(addrs):
+    with open(ADDRESSES_FILE, "w") as f:
+        json.dump(addrs, f, indent=2)
+
+def get_next_wallet():
+    addrs = load_addresses()
+    if not addrs:
+        return None
+    next_wallet = addrs.pop(0)
+    save_addresses(addrs)
+    return next_wallet
+
+def load_tokens():
+    """Load token information from tokens.json"""
+    if not os.path.exists(TOKENS_FILE):
+        return {}
+    with open(TOKENS_FILE, "r") as f:
+        data = json.load(f)
+        return data.get("tokens", {})
+
+def get_wallet_balances(wallet_address):
+    """Get wallet balances for all configured tokens"""
+    try:
+        w3 = Web3(Web3.HTTPProvider(RPC_URL))
+        if not w3.is_connected():
+            return None
+        
+        tokens = load_tokens()
+        balances = {}
+        
+        wallet_address = Web3.to_checksum_address(wallet_address)
+        
+        for symbol, token_info in tokens.items():
+            try:
+                token_address = Web3.to_checksum_address(token_info['address'])
+                contract = w3.eth.contract(address=token_address, abi=ERC20_ABI)
+                
+                balance_raw = contract.functions.balanceOf(wallet_address).call()
+                decimals = token_info.get('decimals', 18)
+                balance = balance_raw / (10 ** decimals)
+                
+                balances[symbol] = {
+                    'balance': balance,
+                    'symbol': symbol
+                }
+            except Exception as e:
+                balances[symbol] = {
+                    'balance': 0.0,
+                    'symbol': symbol,
+                    'error': str(e)
+                }
+        
+        return balances
+    except Exception as e:
+        return None
+
+# Placeholder function for when all wallets are used
+async def handle_no_wallets_available(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Placeholder function to handle the case when all 100 wallets from addresses.txt have been used.
+    This could implement a waitlist, notify admins, or other fallback behavior.
+    """
+    await update.message.reply_text(
+        "🚫 All test wallets are currently assigned.\n\n"
+        "We're at capacity for the Hyperion Testnet phase. "
+        "Please check back later or contact support for updates."
+    )
+
+# Config management functions
+def round_to_one_decimal(value):
+    """Round value to (actually 2) decimal place"""
+    return round(value, 2)
+
+def save_config_entry(user_id, config_data):
+    os.makedirs(CONFIG_PATH.parent, exist_ok=True)
+    
+    if not os.path.exists(CONFIG_PATH):
+        config = {"trading_pairs": []}
+    else:
+        with open(CONFIG_PATH, "r") as f:
+            config = json.load(f)
+
+    # Remove existing config for same user/pair combination
+    config["trading_pairs"] = [
+        entry for entry in config["trading_pairs"]
+        if not (entry["userID"] == user_id and entry["symbol1"] == config_data["symbol1"] and entry["symbol2"] == config_data["symbol2"])
+    ]
+
+    config["trading_pairs"].append(config_data)
+
+    with open(CONFIG_PATH, "w") as f:
+        json.dump(config, f, indent=2)
+
+# Command handlers
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = str(update.effective_user.id)
+    username = update.effective_user.username or ""
+    data = load_users()
+
+    # Check if already registered
+    if chat_id in data["users"]:
+        await update.message.reply_text(
+            "👋 *Welcome back to LazaiTrader!* 🎉\n\n"
+            "🚀 *Hyperion Testnet Phase* (until Aug 7, 2025)\n"
+            "💼 Wallet funded with: 100 TESTgUSDC + 10 000 000 TESTgMetis. Find your wallet address: /wallet \n\n"
+            "🔧 Configure your Martingale strategy: /config\n"
+            "   • Set trade %, trigger %, multiplier & max/min amounts\n\n"
+            "🤖 Our AI monitors prices, executes trades & sends real-time summaries\n\n"
+            "🏆 Top 3 testers share $100 in rewards ($50 / $25 / $25)\n\n"
+            "💰 Check balances: /balance\n"
+            "💸 Withdraw funds: /withdraw\n\n"
+            "💬 To chat with our Alith-powered agent and explore all commands, LazaiTrader tips visit @LazaiTrader group!",
+            parse_mode='Markdown'
+        )
+        return
+
+    # Assign the next available wallet
+    wallet = get_next_wallet()
+    if not wallet:
+        await handle_no_wallets_available(update, context)
+        return
+
+    # Save new user
+    data["users"][chat_id] = {
+        "wallet_address": wallet,
+        "telegram_chat_id": chat_id,
+        "username": username if username else chat_id  # Use chat_id if username is empty
+    }
+    save_users(data)
+
+    await update.message.reply_text(
+        f"👋 *Welcome to LazaiTrader @{username}!* 🎉\n\n"
+        f"Your wallet is: `{wallet}`\n\n"
+        "🚀 *Hyperion Testnet Phase* (until Aug 7, 2025)\n"
+        "💼 Wallet funded with: 100 TESTgUSDC + 10 000 000 TESTgMetis. Find your wallet address: /wallet \n\n"
+        "the fluctuation depends on gMetis price on Metis Andromeda - Hercules DEX\n\n"
+        "💬 In @LazaiTrader group you can talk with our Alith-powered agent and explore all commands, LazaiTrader trading strategy tips, Metis & Hyperion insights!\n\n"
+        "🔧 Configure your Martingale strategy: /config\n"
+        "   • Set trade %, trigger %, multiplier & max/min amounts\n\n"
+        "🤖 Our AI Agent monitors prices, executes trades & sends real-time summaries\n\n"
+        "🏆 Top 3 testers (highest USD value at the end of testing) share $100 in rewards ($50 / $25 / $25)\n\n"
+        "💰 Check balances: /balance\n"
+        "💸 Withdraw funds: /withdraw",
+        parse_mode='Markdown'
+    )
+
+async def wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = str(update.effective_user.id)
+    data = load_users()
+
+    user = data["users"].get(chat_id)
+    if not user:
+        await update.message.reply_text("You're not registered yet. Please send /start first.")
+        return
+
+    await update.message.reply_text(
+        f"Your assigned wallet: `{user['wallet_address']}`",
+        parse_mode='Markdown'
+    )
+
+async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show wallet balances"""
+    chat_id = str(update.effective_user.id)
+    data = load_users()
+
+    user = data["users"].get(chat_id)
+    if not user:
+        await update.message.reply_text("You're not registered yet. Please send /start first.")
+        return
+
+    await update.message.reply_text("🔄 Fetching your wallet balances...")
+    
+    balances = get_wallet_balances(user['wallet_address'])
+    
+    if balances is None:
+        await update.message.reply_text("❌ Failed to fetch wallet balances. Please try again later.")
+        return
+    
+    balance_text = f"💰 *Wallet Balances*\n\n📍 Address: `{user['wallet_address']}`\n\n"
+    
+    for symbol, info in balances.items():
+        if 'error' in info:
+            balance_text += f"❌ {symbol}: Error fetching balance\n"
+        else:
+            balance_text += f"💎 {symbol}: {info['balance']:.1f}\n"
+    
+    await update.message.reply_text(balance_text, parse_mode='Markdown')
+
+async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle withdrawal requests"""
+    chat_id = str(update.effective_user.id)
+    data = load_users()
+
+    user = data["users"].get(chat_id)
+    if not user:
+        await update.message.reply_text("You're not registered yet. Please send /start first.")
+        return
+
+    await update.message.reply_text(
+        "🚫 *Withdrawal Currently Disabled*\n\n"
+        "During the Hyperion testing phase, withdrawal functionality is disabled.\n\n"
+        "💡 *Why?*\n"
+        "• This is a testnet environment\n"
+        "• Funds are test tokens only\n"
+        "• Focus is on testing trading strategies\n\n"
+        "🎯 Withdrawals will be enabled in the mainnet version!",
+        parse_mode='Markdown'
+    )
+
+# Config conversation handlers
+async def config_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Check if user is registered first
+    chat_id = str(update.effective_user.id)
+    data = load_users()
+    
+    if chat_id not in data["users"]:
+        await update.message.reply_text("You need to register first. Please send /start to get started.")
+        return ConversationHandler.END
+
+    # Initialize config with fixed values for later
+    context.user_data["minimum_amount"] = 0.0  # Fixed to 0
+    context.user_data["multiplier"] = 1.5  # Fixed to 1.5
+
+    # First step: Select trading pair
+    keyboard = [
+        [InlineKeyboardButton("🟢 gMetis-USDC", callback_data="pair_gmetis_usdc")],
+        [InlineKeyboardButton("🔒 Metis-USDC", callback_data="pair_metis_usdc")],
+        [InlineKeyboardButton("🔒 ETH-USDC", callback_data="pair_eth_usdc")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        "🔄 *Select Trading Pair*\n\n"
+        "Choose which pair you want to trade:\n\n"
+        "🟢 Available during testnet\n"
+        "🔒 Coming soon after testnet",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+    return PAIR_SELECT
+
+async def handle_risk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "low_risk":
+        context.user_data["trade_percentage"] = round_to_one_decimal(0.05)
+        context.user_data["trigger_percentage"] = round_to_one_decimal(0.05)
+        context.user_data["max_amount"] = round_to_one_decimal(20.0)
+        risk_type = "Conservative"
+    else:
+        context.user_data["trade_percentage"] = round_to_one_decimal(0.2)
+        context.user_data["trigger_percentage"] = round_to_one_decimal(0.15)
+        context.user_data["max_amount"] = round_to_one_decimal(100.0)
+        risk_type = "Aggressive"
+
+    # Show trade percentage confirmation
+    trade_pct = context.user_data["trade_percentage"]
+    keyboard = [
+        [InlineKeyboardButton("✅ Yes, I agree", callback_data="trade_agree")],
+        [InlineKeyboardButton("📉 Make it less (-20%)", callback_data="trade_less")],
+        [InlineKeyboardButton("📈 Make it more (+20%)", callback_data="trade_more")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        f"📊 *{risk_type} Strategy Selected*\n\n"
+        f"Trade percentage set to *{trade_pct*100:.1f}%* which means:\n\n"
+        f"💡 If you have 100 USDC, we will trade with *{trade_pct*100:.1f} USDC* per signal.\n\n"
+        f"Do you agree with this trade size?",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+    return TRADE_PERCENTAGE_CONFIRM
+
+async def handle_max_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "max_agree":
+        # Move to final confirmation
+        pass
+    elif query.data == "max_less":
+        # Reduce by 20%
+        current = context.user_data["max_amount"]
+        new_value = round_to_one_decimal(current * 0.8)
+        context.user_data["max_amount"] = max(1.0, new_value)  # Min $1
+    else:  # max_more
+        # Increase by 20%
+        current = context.user_data["max_amount"]
+        new_value = round_to_one_decimal(current * 1.2)
+        context.user_data["max_amount"] = min(1000.0, new_value)  # Max $1000
+
+    if query.data != "max_agree":
+        # Show updated max amount
+        max_amount = context.user_data["max_amount"]
+        keyboard = [
+            [InlineKeyboardButton("✅ Yes, I agree", callback_data="max_agree")],
+            [InlineKeyboardButton("📉 Make it less (-20%)", callback_data="max_less")],
+            [InlineKeyboardButton("📈 Make it more (+20%)", callback_data="max_more")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            f"💰 *Updated Maximum Trade Amount*\n\n"
+            f"Maximum trade amount set to *${max_amount:.1f}* which means:\n\n"
+            f"💡 No single trade will exceed *${max_amount:.1f}* in value, even if your percentage would suggest a larger trade.\n\n"
+            f"This protects you from very large trades when you have significant balances.\n\n"
+            f"Do you agree with this safety limit?",
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        return MAX_AMOUNT_CONFIRM
+
+    # Show final confirmation
+    keyboard = [
+        [InlineKeyboardButton("✅ Confirm & Save Strategy", callback_data="final_confirm")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    config_summary = (
+        f"🎉 *Your Trading Strategy is Ready!*\n\n"
+        f"📊 *Pair:* {context.user_data['symbol1']}-{context.user_data['symbol2']}\n"
+        f"📈 *Trade %:* {context.user_data['trade_percentage']*100:.1f}%\n"
+        f"🎯 *Trigger %:* {context.user_data['trigger_percentage']*100:.1f}%\n"
+        f"💰 *Max Amount:* ${context.user_data['max_amount']:.1f}\n"
+        f"💸 *Min Amount:* ${context.user_data['minimum_amount']:.1f}\n"
+        f"🔄 *Multiplier:* {context.user_data['multiplier']:.1f}x\n\n"
+        f"Click confirm to activate your strategy!"
+    )
+    
+    await query.edit_message_text(
+        config_summary,
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+    return FINALIZE
+
+async def my_config(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    
+    # Check if user is registered
+    data = load_users()
+    if user_id not in data["users"]:
+        await update.message.reply_text("You need to register first. Please send /start to get started.")
+        return
+
+    if not os.path.exists(CONFIG_PATH):
+        await update.message.reply_text("❌ No configuration found. Use /config to set up your strategy.")
+        return
+
+    with open(CONFIG_PATH, "r") as f:
+        config = json.load(f)
+
+    user_configs = [
+        entry for entry in config.get("trading_pairs", [])
+        if entry["userID"] == user_id
+    ]
+
+    if not user_configs:
+        await update.message.reply_text("❌ You haven't configured any strategies yet. Use /config to get started.")
+        return
+
+    for entry in user_configs:
+        config_text = (
+            f"📊 *Active Configuration*\n\n"
+            f"🔄 Pair: {entry['symbol1']}-{entry['symbol2']}\n"
+            f"📈 Trade %: {entry['trade_percentage']*100:.1f}%\n"
+            f"🎯 Trigger %: {entry['trigger_percentage']*100:.1f}%\n"
+            f"💰 Max Amount: ${entry['max_amount']:.1f}\n"
+            f"💸 Min Amount: ${entry['minimum_amount']:.1f}\n"
+            f"🔄 Multiplier: {entry['multiplier']:.1f}x\n\n"
+            f"💡 Use /config to update your strategy"
+        )
+        await update.message.reply_text(config_text, parse_mode='Markdown')
+
+async def cancel_config(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Cancel the configuration process"""
+    await update.message.reply_text("❌ Configuration cancelled. You can start again anytime with /config")
+    return ConversationHandler.END
+
+
+async def handle_pair_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle trading pair selection"""
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == "pair_gmetis_usdc":
+        context.user_data["symbol1"] = "tgMetis"  # Changed from "gMetis"
+        context.user_data["symbol2"] = "tgUSDC"   # Changed from "USDC"
+        
+        # Show risk selection
+        keyboard = [
+            [InlineKeyboardButton("🛡️ Conservative (Lower Risk)", callback_data="low_risk")],
+            [InlineKeyboardButton("⚡ Aggressive (Higher Risk)", callback_data="high_risk")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            "⚖️ *Choose Your Risk Level*\n\n"
+            "🛡️ **Conservative Strategy:**\n"
+            "• Trade 5% of balance per signal\n"
+            "• Trigger on 5% price changes\n"
+            "• Max trade: $20\n\n"
+            "⚡ **Aggressive Strategy:**\n"
+            "• Trade 20% of balance per signal\n"
+            "• Trigger on 15% price changes\n"
+            "• Max trade: $100\n\n"
+            "Choose your preferred risk level:",
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        return RISK
+    else:
+        await query.edit_message_text(
+            "🔒 This trading pair is not available during the testnet phase.\n\n"
+            "Only gMetis-USDC is currently supported. Please use /config to try again.",
+            parse_mode='Markdown'
+        )
+        return ConversationHandler.END
+
+async def handle_trigger_percentage(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    # Store the previous value to check for changes
+    previous_value = context.user_data["trigger_percentage"]
+
+    if query.data == "trigger_agree":
+        # Move to max amount
+        pass
+    elif query.data == "trigger_less":
+        # Reduce by 20%
+        current = context.user_data["trigger_percentage"]
+        new_value = round_to_one_decimal(current * 0.8)
+        context.user_data["trigger_percentage"] = max(0.01, new_value)  # Min 1%
+    else:  # trigger_more
+        # Increase by 20%
+        current = context.user_data["trigger_percentage"]
+        new_value = round_to_one_decimal(current * 1.2)
+        context.user_data["trigger_percentage"] = min(0.3, new_value)  # Max 30%
+
+    if query.data != "trigger_agree":
+        # Check if value actually changed
+        if context.user_data["trigger_percentage"] == previous_value:
+            # Value didn't change, just answer the callback without updating message
+            return TRIGGER_PERCENTAGE_CONFIRM
+        
+        # Show updated trigger percentage
+        trigger_pct = context.user_data["trigger_percentage"]
+        keyboard = [
+            [InlineKeyboardButton("✅ Yes, I agree", callback_data="trigger_agree")],
+            [InlineKeyboardButton("📉 Make it less (-20%)", callback_data="trigger_less")],
+            [InlineKeyboardButton("📈 Make it more (+20%)", callback_data="trigger_more")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            f"🎯 *Updated Trigger Percentage*\n\n"
+            f"Trigger percentage set to *{trigger_pct*100:.1f}%* which means:\n\n"
+            f"💡 We will execute trades when tgMetis price changes by *{trigger_pct*100:.1f}%* or more.\n\n"
+            f"Example: If tgMetis is $10 and drops to ${10*(1-trigger_pct):.2f} (-{trigger_pct*100:.1f}%), we buy tgMetis with tgUSDC.\n\n"
+            f"Do you agree with this trigger sensitivity?",
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        return TRIGGER_PERCENTAGE_CONFIRM
+
+    # Show max amount confirmation
+    max_amount = context.user_data["max_amount"]
+    keyboard = [
+        [InlineKeyboardButton("✅ Yes, I agree", callback_data="max_agree")],
+        [InlineKeyboardButton("📉 Make it less (-20%)", callback_data="max_less")],
+        [InlineKeyboardButton("📈 Make it more (+20%)", callback_data="max_more")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        f"💰 *Maximum Trade Amount*\n\n"
+        f"Maximum trade amount set to *${max_amount:.1f}* which means:\n\n"
+        f"💡 No single trade will exceed *${max_amount:.1f}* in value, even if your percentage would suggest a larger trade.\n\n"
+        f"This protects you from very large trades when you have significant balances.\n\n"
+        f"Do you agree with this safety limit?",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+    return MAX_AMOUNT_CONFIRM
+
+async def handle_trade_percentage(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    # Store the previous value to check for changes
+    previous_value = context.user_data["trade_percentage"]
+
+    if query.data == "trade_agree":
+        # Move to trigger percentage
+        pass
+    elif query.data == "trade_less":
+        # Reduce by 20%
+        current = context.user_data["trade_percentage"]
+        new_value = round_to_one_decimal(current * 0.8)
+        context.user_data["trade_percentage"] = max(0.01, new_value)  # Min 1%
+    else:  # trade_more
+        # Increase by 20%
+        current = context.user_data["trade_percentage"]
+        new_value = round_to_one_decimal(current * 1.2)
+        context.user_data["trade_percentage"] = min(0.5, new_value)  # Max 50%
+
+    if query.data != "trade_agree":
+        # Check if value actually changed
+        if context.user_data["trade_percentage"] == previous_value:
+            # Value didn't change, just answer the callback without updating message
+            return TRADE_PERCENTAGE_CONFIRM
+        
+        # Show updated trade percentage
+        trade_pct = context.user_data["trade_percentage"]
+        keyboard = [
+            [InlineKeyboardButton("✅ Yes, I agree", callback_data="trade_agree")],
+            [InlineKeyboardButton("📉 Make it less (-20%)", callback_data="trade_less")],
+            [InlineKeyboardButton("📈 Make it more (+20%)", callback_data="trade_more")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            f"📊 *Updated Trade Percentage*\n\n"
+            f"Trade percentage set to *{trade_pct*100:.1f}%* which means:\n\n"
+            f"💡 If you have 100 tgUSDC, we will trade with *{trade_pct*100:.1f} tgUSDC* per signal.\n\n"
+            f"Do you agree with this trade size?",
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        return TRADE_PERCENTAGE_CONFIRM
+
+    # Show trigger percentage confirmation
+    trigger_pct = context.user_data["trigger_percentage"]
+    keyboard = [
+        [InlineKeyboardButton("✅ Yes, I agree", callback_data="trigger_agree")],
+        [InlineKeyboardButton("📉 Make it less (-20%)", callback_data="trigger_less")],
+        [InlineKeyboardButton("📈 Make it more (+20%)", callback_data="trigger_more")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        f"🎯 *Trigger Percentage Setting*\n\n"
+        f"Trigger percentage set to *{trigger_pct*100:.1f}%* which means:\n\n"
+        f"💡 We will execute trades when tgMetis price changes by *{trigger_pct*100:.1f}%* or more.\n\n"
+        f"Example: If tgMetis is $10 and drops to ${10*(1-trigger_pct):.2f} (-{trigger_pct*100:.1f}%), we buy tgMetis with tgUSDC.\n\n"
+        f"Do you agree with this trigger sensitivity?",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+    return TRIGGER_PERCENTAGE_CONFIRM
+
+async def finalize_config(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    user_id = str(update.effective_user.id)
+
+    # Use exact values (no randomization for this simplified flow)
+    final_config = {
+        "userID": user_id,
+        "symbol1": context.user_data["symbol1"],  # This will now be "tgMetis"
+        "symbol2": context.user_data["symbol2"],  # This will now be "tgUSDC"
+        "trade_percentage": context.user_data["trade_percentage"],
+        "trigger_percentage": context.user_data["trigger_percentage"],
+        "max_amount": context.user_data["max_amount"],
+        "minimum_amount": context.user_data["minimum_amount"],
+        "multiplier": context.user_data["multiplier"]
+    }
+
+    save_config_entry(user_id, final_config)
+
+    await query.edit_message_text(
+        f"✅ *Strategy Activated Successfully!*\n\n"
+        f"📊 Pair: {final_config['symbol1']}-{final_config['symbol2']}\n"
+        f"📈 Trade %: {final_config['trade_percentage']*100:.1f}%\n"
+        f"🎯 Trigger %: {final_config['trigger_percentage']*100:.1f}%\n"
+        f"💰 Max Amount: ${final_config['max_amount']:.1f}\n"
+        f"💸 Min Amount: ${final_config['minimum_amount']:.1f}\n"
+        f"🔄 Multiplier: {final_config['multiplier']:.1f}x\n\n"
+        "🤖 Your Martingale strategy is now active and monitoring tgMetis-tgUSDC prices!\n\n"
+        "📊 Check current config: /myconfig\n"
+        "💰 Check balances: /balance\n\n"
+        "\n✅ *The process is complete. Nothing else needs to be done.*\n",
+        parse_mode='Markdown'
+    )
+    return ConversationHandler.END
+
+from telegram import BotCommand
+
+async def setup_commands(app):
+    """Set up the bot commands menu"""
+    commands = [
+        BotCommand("start", "🚀 Start/Register with LazaiTrader"),
+        BotCommand("config", "⚙️ Configure trading strategy"),
+        BotCommand("myconfig", "📊 View current configuration"),
+        BotCommand("balance", "💰 Check wallet balances"),
+        BotCommand("wallet", "📋 Show wallet address"),
+        BotCommand("withdraw", "💸 Withdraw funds"),
+    ]
+    
+    await app.bot.set_my_commands(commands)
+
+async def post_init(app):
+    """Initialize bot commands after startup"""
+    await setup_commands(app)
+
+def main():
+    if not bot_token:
+        print("Error: TELEGRAM_BOT_TOKEN not found in environment variables")
+        return
+
+    app = ApplicationBuilder().token(bot_token).post_init(post_init).build()
+    
+    # Config conversation handler with per_message=False to avoid warning
+    config_conv = ConversationHandler(
+        entry_points=[CommandHandler("config", config_start)],
+        states={
+            PAIR_SELECT: [CallbackQueryHandler(handle_pair_selection)],
+            RISK: [CallbackQueryHandler(handle_risk)],
+            TRADE_PERCENTAGE_CONFIRM: [CallbackQueryHandler(handle_trade_percentage)],
+            TRIGGER_PERCENTAGE_CONFIRM: [CallbackQueryHandler(handle_trigger_percentage)],
+            MAX_AMOUNT_CONFIRM: [CallbackQueryHandler(handle_max_amount)],
+            FINALIZE: [CallbackQueryHandler(finalize_config)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel_config)],
+        per_message=False,
+    )
+
+    # Add handlers
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("wallet", wallet))
+    app.add_handler(CommandHandler("address", wallet))  # alias for wallet
+    app.add_handler(CommandHandler("balance", balance))
+    app.add_handler(CommandHandler("withdraw", withdraw))
+    app.add_handler(config_conv)
+    app.add_handler(CommandHandler("myconfig", my_config))
+    
+    print("Enhanced LazaiTrader bot is running...")
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
+
+// filepath: plugins\addresses.txt
+(BINARY FILE SKIPPED)
+
+// filepath: plugins\lt_alith.py
+import os
+import re
+from langchain_community.document_loaders.github import GithubFileLoader
+from telegram import Update
+from telegram.ext import Application, CallbackContext, MessageHandler, filters
+from alith import Agent, MilvusStore, chunk_text, WindowBufferMemory, Agent
+from dotenv import load_dotenv
+import pathlib
+
+# --------------------------------------------
+# Constants
+# --------------------------------------------
+# Load environment variables
+BASE_PATH = pathlib.Path(__file__).parent.parent  # adjust as needed
+load_dotenv(dotenv_path=BASE_PATH / ".env")
+
+# Get bot token
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN_ALITH")
+GITHUB_ACCESS_KEY = os.getenv("GITHUB_ACCESS_KEY")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/chat/completions")
+
+GITHUB_REPO = "smartonstuff/LazaiTrader"
+DOC_RELATIVE_PATH = "docs"
+
+# --------------------------------------------
+# Init Document Database
+# --------------------------------------------
+def create_vector_store():
+    raw_docs = GithubFileLoader(
+        repo=GITHUB_REPO,
+        access_token=GITHUB_ACCESS_KEY,
+        github_api_url="https://api.github.com",
+        file_filter=lambda file_path: re.match(
+            f"{DOC_RELATIVE_PATH}/.*\\.mdx?", file_path
+        ) is not None,
+    ).load()
+    
+    text_chunks = []
+    for doc in raw_docs:
+        # Ensure doc.page_content is a string and not empty
+        if not doc.page_content or not isinstance(doc.page_content, str):
+            print(f"Skipping document with invalid content: {doc.metadata.get('source', 'unknown')}")
+            continue
+            
+        # Clean the content
+        content = doc.page_content.strip()
+        if len(content) < 10:  # Skip very short documents
+            print(f"Skipping very short document: {doc.metadata.get('source', 'unknown')}")
+            continue
+            
+        try:
+            chunks = chunk_text(content, overlap_percent=0.2)
+            for chunk in chunks:
+                # Ensure chunk is a string and not empty
+                if isinstance(chunk, str) and chunk.strip():
+                    # Add the clean text directly to our list
+                    clean_chunk = chunk.strip()
+                    # Additional validation to ensure it's a proper string
+                    if len(clean_chunk) > 0 and isinstance(clean_chunk, str):
+                        text_chunks.append(clean_chunk)
+                else:
+                    print(f"Skipping invalid chunk in document: {doc.metadata.get('source', 'unknown')}")
+        except Exception as e:
+            print(f"Error chunking document {doc.metadata.get('source', 'unknown')}: {e}")
+            continue
+    
+    if not text_chunks:
+        raise ValueError("No valid text chunks found after processing")
+    
+    # Debug: Print first few characters of each chunk to verify they're strings
+    print(f"Successfully processed {len(text_chunks)} text chunks")
+    for i, chunk in enumerate(text_chunks[:3]):  # Show first 3 chunks
+        print(f"Chunk {i+1} type: {type(chunk)}, length: {len(chunk)}, preview: {repr(chunk[:50])}")
+    
+    try:
+        return MilvusStore().save_docs(text_chunks)
+    except Exception as e:
+        print(f"Error in MilvusStore.save_docs: {e}")
+        print(f"First chunk type: {type(text_chunks[0]) if text_chunks else 'No chunks'}")
+        raise
+
+# --------------------------------------------
+# Init Alith Agent
+# --------------------------------------------
+def create_agent():
+    try:
+        store = create_vector_store()
+        return Agent(
+            name="Telegram Bot Agent",
+            model="deepseek-chat",  # or `deepseek-reasoner` for DeepSeek R1 Model
+            api_key=DEEPSEEK_API_KEY,
+            base_url="https://api.deepseek.com",  # Fixed: added https://
+            preamble="""you are the LazaiTrader Support Agent for Telegram groups. Be concise and only respond when asked questions.
+Key Rules:
+
+Keep responses short and direct
+Only answer when users ask questions
+Always redirect trading functions to @lazaitrader_bot
+Provide brief help on strategies, commands, and troubleshooting
+
+Redirect Template:
+"For trading setup, visit @lazaitrader_bot directly."
+Response Style:
+Good: "Use /config in @lazaitrader_bot to set strategy."
+Bad: Long explanations or unsolicited information.
+When Asked About Strategy:
+
+Conservative: 5% trades, lower risk, more frequent
+Aggressive: 20% trades, higher risk, bigger potential gains
+
+You're a support agent, not a sales agent. Answer helpfully but briefly.RetryClaude can make mistakes. Please double-check responses.""",
+            store=store,
+            memory=WindowBufferMemory()
+        )
+    except Exception as e:
+        print(f"Error creating agent: {e}")
+        raise
+
+# Create agent instance
+agent = create_agent()
+
+# --------------------------------------------
+# Init Telegram Bot
+# --------------------------------------------
+async def handle_message(update: Update, context: CallbackContext) -> None:
+    try:
+        response = agent.prompt(update.message.text)
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=response)
+    except Exception as e:
+        print(f"Error handling message: {e}")
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id, 
+            text="Sorry, I encountered an error processing your request."
+        )
+
+app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+
+# Start the bot
+if __name__ == "__main__":
+    app.run_polling()
+

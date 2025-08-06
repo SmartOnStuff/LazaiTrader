@@ -1,0 +1,15 @@
+{
+  "trading_pairs": [
+    {
+      "symbol1": "tgMetis",
+      "symbol2": "tgUSDC",
+      "trade_percentage": 0.1,
+      "trigger_percentage": 0.1,
+      "max_amount": 50.0,
+      "minimum_amount": 1.0,
+      "decimal": 3,
+      "multiplier": 2,
+      "userID": "user1"
+    }
+  ]
+}

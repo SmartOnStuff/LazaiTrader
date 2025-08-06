@@ -1,0 +1,14 @@
+{
+  "tokens": {
+    "tgMetis": {
+      "address": "0x69Dd3C70Ae76256De7Ec9AF5893DEE49356D45fc",
+      "decimals": 18,
+      "symbol": "tgMetis"
+    },
+    "tgUSDC": {
+      "address": "0x6Eb66c8bBD57FdA71ecCAAc40a56610C2CA8FDb8",
+      "decimals": 18,
+      "symbol": "tgUSDC"
+    }
+  }
+}
