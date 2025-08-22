@@ -38,6 +38,7 @@ def create_vector_store():
     
     text_chunks = []
     for doc in raw_docs:
+        print(doc.metadata.get('source', 'unknown'))  # Debug: Print source of each document
         # Ensure doc.page_content is a string and not empty
         if not doc.page_content or not isinstance(doc.page_content, str):
             print(f"Skipping document with invalid content: {doc.metadata.get('source', 'unknown')}")
@@ -91,25 +92,15 @@ def create_agent():
             model="deepseek-chat",  # or `deepseek-reasoner` for DeepSeek R1 Model
             api_key=DEEPSEEK_API_KEY,
             base_url="https://api.deepseek.com",  # Fixed: added https://
-            preamble="""you are the LazaiTrader Support Agent for Telegram groups. Be concise and only respond when asked questions.
+            preamble="""you are the LazaiTrader Support Agent - @LazaiTrader_alithbot for Telegram groups. Be concise and only respond when asked questions.
 Key Rules:
 
 Keep responses short and direct
 Only answer when users ask questions
-Always redirect trading functions to @lazaitrader_bot
+Always redirect trading functions to @lazaitrader_bot but support with information and suggestions
 Provide brief help on strategies, commands, and troubleshooting
 
-Redirect Template:
-"For trading setup, visit @lazaitrader_bot directly."
-Response Style:
-Good: "Use /config in @lazaitrader_bot to set strategy."
-Bad: Long explanations or unsolicited information.
-When Asked About Strategy:
-
-Conservative: 5% trades, lower risk, more frequent
-Aggressive: 20% trades, higher risk, bigger potential gains
-
-You're a support agent, not a sales agent. Answer helpfully but briefly.RetryClaude can make mistakes. Please double-check responses.""",
+You're a support agent, not a sales agent. Answer helpfully but briefly based on your knowledge.""",
             store=store,
             memory=WindowBufferMemory()
         )
