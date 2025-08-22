@@ -11,18 +11,19 @@ load_dotenv()
 # ─── CONFIGURATION ────────────────────────────────────────────────────────
 RPC_URL = os.getenv('RPC_URL', "https://hyperion-testnet.metisdevops.link")
 CHAIN_ID = int(os.getenv('CHAIN_ID', 133717))
-DEX_ADDR = os.getenv('DEX_ADDR')
 ORACLE_OWNER_PK = os.getenv('ORACLE_OWNER_PK')
-DEXSCREENER_API = os.getenv('DEXSCREENER_API', "https://api.dexscreener.com/latest/dex/pairs/metis/0xb7af89d7fe88d4fa3c9b338a0063359196245eaa")
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 PRODUCTION = os.getenv('PRODUCTION', '0') == '1'
+
+# API endpoints
+DEXSCREENER_API = os.getenv('DEXSCREENER_API', "https://api.dexscreener.com/latest/dex/pairs/metis/0xb7af89d7fe88d4fa3c9b338a0063359196245eaa")
+COINGECKO_API = os.getenv('COINGECKO_API', "https://api.coingecko.com/api/v3/simple/price")
 
 # Configuration files (moved to 'config' directory)
 CONFIG_FILE = 'config/config.json'
 TOKENS_FILE = 'config/tokens.json'
 WALLETS_FILE = 'config/wallets.json'
 USERS_FILE = 'config/users.json'
-
 
 # Create logs directory
 os.makedirs('logs', exist_ok=True)
@@ -50,9 +51,9 @@ DEX_ABI = json.loads("""[
 token_contracts_cache = {}
 user_data_cache = {}
 price_cache = {}
+tokens_config_cache = None
 
-global_price_data = None
-
+global_price_data = {}
 
 class PriceCache:
     def __init__(self, ttl_seconds=60):
@@ -122,13 +123,20 @@ def load_json_file(filepath):
         error_logger.error(f"Invalid JSON in {filepath}: {e}")
         return None
 
+def load_tokens_config():
+    """Load tokens configuration with caching."""
+    global tokens_config_cache
+    if tokens_config_cache is None:
+        tokens_config_cache = load_json_file(TOKENS_FILE)
+    return tokens_config_cache
+
 def get_token_info(symbol):
     """Get token address and decimals from tokens.json with caching and checksum conversion."""
     if symbol in token_contracts_cache:
         return token_contracts_cache[symbol]
     
-    tokens_data = load_json_file(TOKENS_FILE)
-    if not tokens_data or symbol not in tokens_data['tokens']:
+    tokens_data = load_tokens_config()
+    if not tokens_data or symbol not in tokens_data.get('tokens', {}):
         error_logger.error(f"Token {symbol} not found in tokens.json")
         return None
     
@@ -143,6 +151,27 @@ def get_token_info(symbol):
     
     token_contracts_cache[symbol] = token_info
     return token_info
+
+def get_pair_info(symbol1, symbol2):
+    """Get trading pair information from tokens.json."""
+    tokens_data = load_tokens_config()
+    if not tokens_data or 'pairs' not in tokens_data:
+        error_logger.error("No pairs configuration found in tokens.json")
+        return None
+    
+    pair_key = f"{symbol1}-{symbol2}"
+    if pair_key in tokens_data['pairs']:
+        pair_info = tokens_data['pairs'][pair_key].copy()
+        # Convert DEX address to checksum format
+        try:
+            pair_info['dex_address'] = Web3.to_checksum_address(pair_info['dex_address'])
+        except Exception as e:
+            error_logger.error(f"Invalid DEX address format for pair {pair_key}: {e}")
+            return None
+        return pair_info
+    
+    error_logger.error(f"Pair {pair_key} not found in tokens.json")
+    return None
 
 def get_user_data(user_id):
     """Get user wallet and private key from configuration files with caching and checksum conversion."""
@@ -193,7 +222,7 @@ def get_user_data(user_id):
 def send_telegram_message(message, chat_id):
     """Send message to specific Telegram chat."""
     if not TELEGRAM_BOT_TOKEN or not chat_id:
-        error_logger.error("Telegram credentials not configured")
+        # Silently skip if credentials not configured
         return False
     
     try:
@@ -207,59 +236,102 @@ def send_telegram_message(message, chat_id):
         response.raise_for_status()
         return True
     except Exception as e:
-        error_logger.error(f"Failed to send Telegram message: {e}")
+        # Silently handle Telegram failures without logging to error log
+        # You could optionally log to main log if you want some record:
+        main_logger.warning(f"Telegram notification failed (non-critical): {e}")
         return False
 
-# Replace the existing fetch_prices_from_dexscreener function with this version:
 @rate_limit(calls_per_second=3)
-def fetch_prices_from_dexscreener():
+def fetch_prices_from_dexscreener(pair_key):
     """Fetch current prices from DexScreener API and calculate contract prices."""
     global global_price_data
     
     # Return cached data if available
-    if global_price_data is not None:
-        return global_price_data
+    if pair_key in global_price_data:
+        return global_price_data[pair_key]
+    
+    pair_info = get_pair_info(*pair_key.split('-'))
+    if not pair_info or pair_info.get('price_source') != 'dexscreener':
+        error_logger.error(f"DexScreener not configured for pair {pair_key}")
+        return None, None, None
     
     try:
-        res = requests.get(DEXSCREENER_API, timeout=10)
+        res = requests.get(pair_info['price_api'], timeout=10)
         res.raise_for_status()
         data = res.json()
         price_usdc = float(data['pair']['priceUsd'])
         
         # Both tokens are 18 decimals, contract expects 1e18 scaling for price ratios
-        price_gmetis_to_usdc = int(price_usdc * 1e18)  # Contract expects 1e18 scaling
-        price_usdc_to_gmetis = int((1 / price_usdc) * 1e18)  # Contract expects 1e18 scaling
+        price_base_to_quote = int(price_usdc * 1e18)  # Contract expects 1e18 scaling
+        price_quote_to_base = int((1 / price_usdc) * 1e18)  # Contract expects 1e18 scaling
 
-        main_logger.info(f"Fetched price from DexScreener: tgMetis/USD = ${price_usdc:.10f}")
+        main_logger.info(f"Fetched price from DexScreener for {pair_key}: ${price_usdc:.10f}")
         
         # Cache the result globally
-        global_price_data = (price_gmetis_to_usdc, price_usdc_to_gmetis, price_usdc)
-        return global_price_data
+        global_price_data[pair_key] = (price_base_to_quote, price_quote_to_base, price_usdc)
+        return global_price_data[pair_key]
         
     except Exception as e:
-        error_logger.error(f"Failed to fetch prices from DexScreener: {e}")
+        error_logger.error(f"Failed to fetch prices from DexScreener for {pair_key}: {e}")
         return None, None, None
 
-# Add this function to reset the cache at the start of each main() run:
+@rate_limit(calls_per_second=3)
+def fetch_prices_from_coingecko(pair_key):
+    """Fetch current prices from CoinGecko API."""
+    global global_price_data
+    
+    # Return cached data if available
+    if pair_key in global_price_data:
+        return global_price_data[pair_key]
+    
+    pair_info = get_pair_info(*pair_key.split('-'))
+    if not pair_info or pair_info.get('price_source') != 'coingecko':
+        error_logger.error(f"CoinGecko not configured for pair {pair_key}")
+        return None, None, None
+    
+    try:
+        # For ETH-USDC, fetch ETH price in USD
+        res = requests.get(pair_info['price_api'], timeout=10)
+        res.raise_for_status()
+        data = res.json()
+        price_usdc = float(data['ethereum']['usd'])
+        
+        # Both tokens are 18 decimals, contract expects 1e18 scaling for price ratios
+        price_base_to_quote = int(price_usdc * 1e18)
+        price_quote_to_base = int((1 / price_usdc) * 1e18)
+
+        main_logger.info(f"Fetched price from CoinGecko for {pair_key}: ${price_usdc:.10f}")
+        
+        # Cache the result globally
+        global_price_data[pair_key] = (price_base_to_quote, price_quote_to_base, price_usdc)
+        return global_price_data[pair_key]
+        
+    except Exception as e:
+        error_logger.error(f"Failed to fetch prices from CoinGecko for {pair_key}: {e}")
+        return None, None, None
+
 def reset_price_cache():
     """Reset global price cache for new script run."""
     global global_price_data
-    global_price_data = None
-
-
+    global_price_data = {}
 
 @rate_limit(calls_per_second=3)
-def update_oracle_prices(w3, price_gmetis_to_usdc, price_usdc_to_gmetis):
+def update_oracle_prices(w3, base_asset, quote_asset, price_base_to_quote, price_quote_to_base):
     """Update DEX oracle prices using owner account with checksum address handling."""
     try:
         owner = w3.eth.account.from_key(ORACLE_OWNER_PK)
         
-        # Ensure DEX address is in checksum format
-        dex_address = Web3.to_checksum_address(DEX_ADDR)
+        # Get DEX address for this specific pair
+        pair_info = get_pair_info(base_asset, quote_asset)
+        if not pair_info:
+            error_logger.error(f"No DEX configuration found for {base_asset}-{quote_asset}")
+            return False
+        
+        dex_address = pair_info['dex_address']
         dex = w3.eth.contract(address=dex_address, abi=DEX_ABI)
         
         nonce = w3.eth.get_transaction_count(owner.address)
-        tx = dex.functions.setPrices(price_gmetis_to_usdc, price_usdc_to_gmetis).build_transaction({
+        tx = dex.functions.setPrices(price_base_to_quote, price_quote_to_base).build_transaction({
             "chainId": CHAIN_ID,
             "from": owner.address,
             "nonce": nonce,
@@ -271,13 +343,13 @@ def update_oracle_prices(w3, price_gmetis_to_usdc, price_usdc_to_gmetis):
             signed = owner.sign_transaction(tx)
             tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
             receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-            main_logger.info(f"Oracle prices updated on-chain: {receipt.transactionHash.hex()}")
+            main_logger.info(f"Oracle prices updated for {base_asset}-{quote_asset}: {receipt.transactionHash.hex()}")
         else:
-            main_logger.info(f"SIMULATION: Oracle prices would be updated")
+            main_logger.info(f"SIMULATION: Oracle prices would be updated for {base_asset}-{quote_asset}")
         
         return True
     except Exception as e:
-        error_logger.error(f"Failed to update oracle prices: {e}")
+        error_logger.error(f"Failed to update oracle prices for {base_asset}-{quote_asset}: {e}")
         return False
 
 def get_pair_symbol(base_asset, quote_asset):
@@ -294,23 +366,31 @@ def get_price(base_asset, quote_asset):
         if cached_price is not None:
             return time.strftime("%y%m%d"), time.strftime("%H%M%S"), cached_price
         
-        # For tgMetis/tgUSDC pair, fetch from DexScreener
-        if (base_asset == "tgMetis" and quote_asset == "tgUSDC") or \
-           (base_asset == "tgUSDC" and quote_asset == "tgMetis"):
-            _, _, price_usd = fetch_prices_from_dexscreener()
-            if price_usd is None:
-                raise Exception("Failed to fetch price from DexScreener")
-            
-            # Return price based on direction
-            if base_asset == "tgMetis":
-                price = price_usd  # tgMetis price in USD (treating tgUSDC as USD)
-            else:
-                price = 1.0 / price_usd  # tgUSDC price in tgMetis
-            
-            price_cache_instance.set_price(symbol, price)
-            return time.strftime("%y%m%d"), time.strftime("%H%M%S"), price
+        # Get pair configuration
+        pair_key = f"{base_asset}-{quote_asset}"
+        pair_info = get_pair_info(base_asset, quote_asset)
+        if not pair_info:
+            raise Exception(f"No configuration found for pair {pair_key}")
+        
+        # Fetch price based on configured source
+        if pair_info['price_source'] == 'dexscreener':
+            _, _, price_usd = fetch_prices_from_dexscreener(pair_key)
+        elif pair_info['price_source'] == 'coingecko':
+            _, _, price_usd = fetch_prices_from_coingecko(pair_key)
         else:
-            raise Exception(f"Unsupported trading pair: {base_asset}/{quote_asset}")
+            raise Exception(f"Unsupported price source: {pair_info['price_source']}")
+        
+        if price_usd is None:
+            raise Exception(f"Failed to fetch price from {pair_info['price_source']}")
+        
+        # Return price based on direction
+        if base_asset in ["tgMetis", "tgETH"]:
+            price = price_usd  # Base asset price in USD (treating quote as USD)
+        else:
+            price = 1.0 / price_usd  # Quote asset price in base terms
+        
+        price_cache_instance.set_price(symbol, price)
+        return time.strftime("%y%m%d"), time.strftime("%H%M%S"), price
             
     except Exception as e:
         raise Exception(f"Failed to get price for {base_asset}/{quote_asset}: {e}")
@@ -341,17 +421,17 @@ def get_balances(w3, base_asset, quote_asset, wallet_address):
 def calculate_total_balance_usd(base_asset, quote_asset, base_balance, quote_balance, current_price):
     """Calculate total balance in USD using token decimals from configuration."""
     try:
-        if base_asset == "tgMetis" and quote_asset == "tgUSDC":
-            # tgMetis value in USD (current_price is tgMetis price in USD)
+        if base_asset in ["tgMetis", "tgETH"] and quote_asset == "tgUSDC":
+            # Base asset value in USD (current_price is base price in USD)
             base_value_usd = base_balance * current_price
             # tgUSDC is pegged to USD (1:1)
             quote_value_usd = quote_balance
             # Return individual USD prices for logging
             return base_value_usd + quote_value_usd, current_price, 1.0
-        elif base_asset == "tgUSDC" and quote_asset == "tgMetis":
+        elif base_asset == "tgUSDC" and quote_asset in ["tgMetis", "tgETH"]:
             # tgUSDC is pegged to USD (1:1)  
             base_value_usd = base_balance
-            # tgMetis value in USD (1/current_price since current_price is tgUSDC/tgMetis)
+            # Quote asset value in USD (1/current_price since current_price is tgUSDC/quote)
             quote_value_usd = quote_balance * (1.0 / current_price)
             return base_value_usd + quote_value_usd, 1.0, (1.0 / current_price)
         else:
@@ -494,6 +574,13 @@ def execute_dex_trade(w3, base_asset, quote_asset, action, quantity, user_data):
         quote_token_info = get_token_info(quote_asset)
         user_account = w3.eth.account.from_key(user_data['private_key'])
         
+        # Get DEX address for this specific pair
+        pair_info = get_pair_info(base_asset, quote_asset)
+        if not pair_info:
+            raise Exception(f"No DEX configuration found for {base_asset}-{quote_asset}")
+        
+        dex_address = pair_info['dex_address']
+        
         if action == "BUY":
             # Buying base asset with quote asset
             # quantity is the amount of base asset to buy
@@ -513,7 +600,6 @@ def execute_dex_trade(w3, base_asset, quote_asset, action, quantity, user_data):
         
         # Addresses are already in checksum format from get_token_info
         token_in_contract = w3.eth.contract(address=token_in_info['address'], abi=ERC20_ABI)
-        dex_address = Web3.to_checksum_address(DEX_ADDR)
         dex_contract = w3.eth.contract(address=dex_address, abi=DEX_ABI)
         
         if not PRODUCTION:
@@ -568,24 +654,17 @@ def calculate_trade_amounts(action, base_balance, quote_balance, price, trade_pe
     if action == "SELL":
         # Selling base asset: quantity is amount of base asset to sell
         qty_from_percentage = base_balance * trade_percentage
-        print(f"qty_from_percentage: {qty_from_percentage}")
-        print(f"base_usd_price: {base_usd_price}, trade_percentage: {trade_percentage}")
         max_qty_allowed = (max_amount / base_usd_price) if max_amount > 0 else float('inf')
         qty = min(qty_from_percentage, max_qty_allowed)
         trade_value_usd = qty * base_usd_price
-        print(qty)
     else:  # BUY
         # Buying base asset: calculate how much quote asset we can spend, then convert to base quantity
         quote_to_trade = quote_balance * trade_percentage
         quote_max_allowed = (max_amount / quote_usd_price) if max_amount > 0 else float('inf')
         quote_to_trade = min(quote_to_trade, quote_max_allowed)
-        print(f"quote_to_trade: {quote_to_trade}")
-        print(f"quote_usd_price: {quote_usd_price}, trade_percentage: {trade_percentage}")
-        print(f"quote_balance: {quote_balance}, price: {price}")
         
         # Convert quote amount to base quantity using current price
         qty = quote_to_trade / price  # This is the amount of base asset we'll receive
-        print(qty)
         trade_value_usd = quote_to_trade * quote_usd_price
     
     meets_minimum = trade_value_usd >= minimum_amount
@@ -618,31 +697,31 @@ def send_trade_notification(user_data, base_asset, quote_asset, action, qty, tra
     tx_info = f"\n<b>🔗 TX Hash:</b> <code>{tx_hash}</code>" if tx_hash != "SIMULATION" else ""
     
     message = f"""
-{mode_text} TRADE EXECUTED {direction_emoji}
+        {mode_text} TRADE EXECUTED {direction_emoji}
 
-<b>Pair:</b> {base_asset}/{quote_asset}
-<b>Action:</b> {action} {base_asset}
-<b>Amount:</b> {qty:.10f} {base_asset}
-<b>Trade Value:</b> ${trade_value_usd:.2f}{multiplier_text}{tx_info}
+        <b>Pair:</b> {base_asset}/{quote_asset}
+        <b>Action:</b> {action} {base_asset}
+        <b>Amount:</b> {qty:.10f} {base_asset}
+        <b>Trade Value:</b> ${trade_value_usd:.2f}{multiplier_text}{tx_info}
 
-<b>Base Price:</b> {base_price:.10f} {quote_asset} ({date_str})
-<b>Current Price:</b> {current_price:.10f} {quote_asset}
-<b>Price Change:</b> {move_pct*100:+.2f}%
+        <b>Base Price:</b> {base_price:.10f} {quote_asset} ({date_str})
+        <b>Current Price:</b> {current_price:.10f} {quote_asset}
+        <b>Price Change:</b> {move_pct*100:+.2f}%
 
-<b>Current Balances:</b>
-• {base_asset}: {new_base_balance:.10f}
-• {quote_asset}: {new_quote_balance:.10f}
-• <b>Total USD: ${total_balance_usd:.2f}</b>
-"""
+        <b>Current Balances:</b>
+        • {base_asset}: {new_base_balance:.10f}
+        • {quote_asset}: {new_quote_balance:.10f}
+        • <b>Total USD: ${total_balance_usd:.2f}</b>
+        """
     
     chat_id = user_data.get('telegram_chat_id')
     if chat_id:
         send_telegram_message(message, chat_id)
 
 def process_trade_signal(w3, base_asset, quote_asset, user_data, action, date_str, time_str, price, 
-                        base_balance, quote_balance, base_trade_percentage, multiplier, max_amount, 
-                        minimum_amount, decimal_places, base_price, move_pct, base_usd_price, quote_usd_price):
-    """Process a trade signal (BUY or SELL) with multiplier logic."""
+                         base_balance, quote_balance, base_trade_percentage, multiplier, max_amount, 
+                         minimum_amount, decimal_places, base_price, move_pct, base_usd_price, quote_usd_price):
+    """Process a trade signal (BUY or SELL) with multiplier logic and fund checks."""
     
     user_id = user_data.get('username', 'unknown')
     
@@ -659,17 +738,40 @@ def process_trade_signal(w3, base_asset, quote_asset, user_data, action, date_st
         action, base_balance, quote_balance, price, actual_trade_percentage, max_amount, minimum_amount,
         base_usd_price, quote_usd_price
     )
-    
-    if not meets_minimum:
-        # Trade too small, just update base
+
+    if not meets_minimum or qty == 0:
         store_price(base_asset, quote_asset, date_str, time_str, price, base_flag=1, user_id=user_id)
-        main_logger.info(f"[{base_asset}/{quote_asset}/{user_id}] Trade too small (${trade_value_usd:.2f} < ${minimum_amount}) -> new base set, no trade")
-        return True
+        if not meets_minimum:
+            reason = f"Trade too small (${trade_value_usd:.2f} < ${minimum_amount})"
+        else: # qty is 0, which means balance was 0
+            reason = "Insufficient funds in wallet to execute trade"
+
+        message = f"""
+        ⚠️ <b>TRIGGER HIT - NO TRADE EXECUTED</b> ⚠️
+
+        <b>Pair:</b> {base_asset}/{quote_asset}
+        <b>Action:</b> {action} {base_asset}
+        <b>Reason:</b> {reason}
+        
+        <b>Base Price:</b> {base_price:.10f} {quote_asset} ({date_str})
+        <b>Current Price:</b> {price:.10f} {quote_asset}
+        <b>Price Change:</b> {move_pct*100:+.2f}%
+
+        <b>Current Balances:</b>
+        • {base_asset}: {base_balance:.10f}
+        • {quote_asset}: {quote_balance:.10f}
+        """
+        send_telegram_message(message, user_data.get('telegram_chat_id'))
+        main_logger.warning(f"[{base_asset}/{quote_asset}/{user_id}] Trigger hit for {action} but no trade executed due to {reason}.")
+        return True # Still return True to indicate processing was successful
     
+    # The rest of the function remains the same.
+    # If the code reaches this point, a trade will be attempted.
+
     # Calculate new balances
     new_base_balance, new_quote_balance = calculate_new_balances(action, base_balance, quote_balance, qty, price)
     total_balance_usd, _, _ = calculate_total_balance_usd(base_asset, quote_asset, new_base_balance, new_quote_balance, price)
-    
+
     # Execute trade
     try:
         order = execute_dex_trade(w3, base_asset, quote_asset, action, qty, user_data)
@@ -677,13 +779,13 @@ def process_trade_signal(w3, base_asset, quote_asset, user_data, action, date_st
         
         # Log trade with multiplier info and tx_hash, then update base price
         log_trade(base_asset, quote_asset, user_id, action, date_str, time_str, price, qty, 
-                 new_base_balance, new_quote_balance, total_balance_usd, base_usd_price, quote_usd_price,
-                 consecutive_count, actual_trade_percentage, tx_hash)
+                  new_base_balance, new_quote_balance, total_balance_usd, base_usd_price, quote_usd_price,
+                  consecutive_count, actual_trade_percentage, tx_hash)
         store_price(base_asset, quote_asset, date_str, time_str, price, base_flag=1, user_id=user_id)
         
         # Send notification with multiplier info and tx_hash
         send_trade_notification(user_data, base_asset, quote_asset, action, qty, trade_value_usd, base_price, price, move_pct,
-                              new_base_balance, new_quote_balance, total_balance_usd, date_str, consecutive_count, actual_trade_percentage, tx_hash)
+                                new_base_balance, new_quote_balance, total_balance_usd, date_str, consecutive_count, actual_trade_percentage, tx_hash)
         
         action_text = f"{'SOLD' if action == 'SELL' else 'BOUGHT'}" if PRODUCTION else f"SIMULATED {action}"
         multiplier_info = f" (consecutive #{consecutive_count + 1}, {actual_trade_percentage*100:.2f}%)" if consecutive_count > 0 else ""
@@ -694,6 +796,7 @@ def process_trade_signal(w3, base_asset, quote_asset, user_data, action, date_st
     except Exception as e:
         error_logger.error(f"[{base_asset}/{quote_asset}/{user_id}] Failed to execute {action} trade: {e}")
         return False
+
 
 def process_trading_pair(w3, pair_config):
     """Process a single trading pair based on its configuration."""
@@ -714,10 +817,24 @@ def process_trading_pair(w3, pair_config):
         return False
     
     try:
-        # Get price data first (no oracle update yet)
-        price_gmetis_to_usdc, price_usdc_to_gmetis, price_usd = fetch_prices_from_dexscreener()
-        if price_gmetis_to_usdc is None:
-            error_logger.error(f"Failed to fetch prices from DexScreener")
+        # Get price data first
+        pair_key = f"{base_asset}-{quote_asset}"
+        pair_info = get_pair_info(base_asset, quote_asset)
+        if not pair_info:
+            error_logger.error(f"No pair configuration found for {pair_key}")
+            return False
+        
+        # Fetch prices based on configured source
+        if pair_info['price_source'] == 'dexscreener':
+            price_base_to_quote, price_quote_to_base, price_usd = fetch_prices_from_dexscreener(pair_key)
+        elif pair_info['price_source'] == 'coingecko':
+            price_base_to_quote, price_quote_to_base, price_usd = fetch_prices_from_coingecko(pair_key)
+        else:
+            error_logger.error(f"Unsupported price source: {pair_info['price_source']}")
+            return False
+        
+        if price_base_to_quote is None:
+            error_logger.error(f"Failed to fetch prices for {pair_key}")
             return False
         
         date_str, time_str, price = get_price(base_asset, quote_asset)
@@ -741,7 +858,7 @@ def process_trading_pair(w3, pair_config):
         if move_pct >= trigger_percentage:
             # Price increased → SELL base asset
             # Update oracle before trade
-            update_oracle_prices(w3, price_gmetis_to_usdc, price_usdc_to_gmetis)
+            update_oracle_prices(w3, base_asset, quote_asset, price_base_to_quote, price_quote_to_base)
             return process_trade_signal(w3, base_asset, quote_asset, user_data, "SELL", date_str, time_str, price, 
                                       base_balance, quote_balance, base_trade_percentage, multiplier, max_amount, minimum_amount, 
                                       decimal_places, base_price, move_pct, base_usd_price, quote_usd_price)
@@ -749,7 +866,7 @@ def process_trading_pair(w3, pair_config):
         elif move_pct <= -trigger_percentage:
             # Price decreased → BUY base asset
             # Update oracle before trade
-            update_oracle_prices(w3, price_gmetis_to_usdc, price_usdc_to_gmetis)
+            update_oracle_prices(w3, base_asset, quote_asset, price_base_to_quote, price_quote_to_base)
             return process_trade_signal(w3, base_asset, quote_asset, user_data, "BUY", date_str, time_str, price, 
                                       base_balance, quote_balance, base_trade_percentage, multiplier, max_amount, minimum_amount, 
                                       decimal_places, base_price, move_pct, base_usd_price, quote_usd_price)
@@ -762,6 +879,7 @@ def process_trading_pair(w3, pair_config):
     except Exception as e:
         error_logger.error(f"[{base_asset}/{quote_asset}/{user_id}] Error processing trading pair: {str(e)}")
         return False
+
 def validate_trading_pair(pair_config):
     """Validate a trading pair configuration before processing."""
     required_fields = ['symbol1', 'symbol2', 'trade_percentage', 'trigger_percentage', 'userID']
@@ -793,18 +911,8 @@ def load_config():
 
 def validate_and_fix_addresses():
     """Validate and convert all addresses to checksum format at startup."""
-    global DEX_ADDR
-    
-    try:
-        # Fix DEX address
-        DEX_ADDR = Web3.to_checksum_address(DEX_ADDR)
-        main_logger.info(f"DEX address converted to checksum: {DEX_ADDR}")
-    except Exception as e:
-        error_logger.error(f"Invalid DEX address format: {DEX_ADDR}, error: {e}")
-        return False
-    
     # Validate tokens.json addresses
-    tokens_data = load_json_file(TOKENS_FILE)
+    tokens_data = load_tokens_config()
     if tokens_data and 'tokens' in tokens_data:
         for symbol, token_info in tokens_data['tokens'].items():
             try:
@@ -812,6 +920,16 @@ def validate_and_fix_addresses():
                 main_logger.info(f"Token {symbol} address validated: {checksum_addr}")
             except Exception as e:
                 error_logger.error(f"Invalid address for token {symbol}: {token_info['address']}, error: {e}")
+                return False
+    
+    # Validate pair DEX addresses
+    if tokens_data and 'pairs' in tokens_data:
+        for pair_key, pair_info in tokens_data['pairs'].items():
+            try:
+                checksum_addr = Web3.to_checksum_address(pair_info['dex_address'])
+                main_logger.info(f"Pair {pair_key} DEX address validated: {checksum_addr}")
+            except Exception as e:
+                error_logger.error(f"Invalid DEX address for pair {pair_key}: {pair_info['dex_address']}, error: {e}")
                 return False
     
     # Validate wallet addresses
