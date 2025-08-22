@@ -64,8 +64,11 @@ https://t.me/LazaiTrader
 /balance      # Check wallet balances
 ```
 
-🏗️ System Architecture
+## 🏗️ System Architecture
+
 LazaiTrader employs a sophisticated multi-component architecture designed for scalability, security, and intelligence:
+
+```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    LAZAITRADER ECOSYSTEM                        │
 ├─────────────────────────────────────────────────────────────────┤
@@ -100,8 +103,12 @@ LazaiTrader employs a sophisticated multi-component architecture designed for sc
 │  │  • Community Intel     • Personalized Suggestions     │   │
 │  └─────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
-🔄 Data Flow Architecture
-mermaidgraph TD
+```
+
+## 🔄 Data Flow Architecture
+
+```mermaid
+graph TD
     A[User] -->|Commands| B[Telegram Interface]
     B --> C{Command Type}
     
@@ -126,6 +133,8 @@ mermaidgraph TD
     
     K --> S[Chart Generation]
     S --> T[User Visualization]
+```
+
 
 ### Core Components
 
