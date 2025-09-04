@@ -411,28 +411,6 @@ async def get_suggestion():
     # 4. Return personalized recommendations
 ```
 
-## 🏆 Spotlight Campaign
-
-### **Timeline**: Until August 21, 2025
-
-### **Current Prize Pool**: $100
-- **1st Place**: $50 (highest wallet USD value)
-- **2nd Place**: $25
-- **3rd Place**: $25
-
-### **Potential Prize Pool**: $500*
-*If LazaiTrader wins Hyperhack rewards:
-- **Core Prizes Doubled**: 1st = $100, 2nd = $50, 3rd = $50
-- **Bonus Winners**: +10 winners get $30 in ETH/METIS/USDC
-- **Distribution**: On Hyperion mainnet with withdrawals enabled
-
-### **How to Win**
-1. **Strategic Configuration**: Choose optimal risk levels and parameters
-2. **Multi-Pair Trading**: Test both tgMetis-USDC and tgETH-USDC
-3. **Strategy Vault**: Contribute data and use AI suggestions for optimization
-4. **Community Engagement**: Learn from @LazaiTrader group discussions
-5. **Performance Tracking**: Monitor progress with `/chart` and `/balance`
-
 ## 🔒 Security & Privacy
 
 ### Multi-Layer Protection
