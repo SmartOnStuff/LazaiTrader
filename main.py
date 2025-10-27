@@ -1,3 +1,6 @@
+'''
+version 0.2 - Smart Contract Wallet enabled Non-custodial wallet management 
+'''
 import csv, os, time, json, requests
 import logging
 from datetime import datetime
@@ -14,6 +17,7 @@ CHAIN_ID = int(os.getenv('CHAIN_ID', 133717))
 ORACLE_OWNER_PK = os.getenv('ORACLE_OWNER_PK')
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 PRODUCTION = os.getenv('PRODUCTION', '0') == '1'
+BOT_PRIVATE_KEY = os.getenv('BOT_WALLET_PRIVATE_KEY')
 
 # API endpoints
 DEXSCREENER_API = os.getenv('DEXSCREENER_API', "https://api.dexscreener.com/latest/dex/pairs/metis/0xb7af89d7fe88d4fa3c9b338a0063359196245eaa")
@@ -22,7 +26,7 @@ COINGECKO_API = os.getenv('COINGECKO_API', "https://api.coingecko.com/api/v3/sim
 # Configuration files (moved to 'config' directory)
 CONFIG_FILE = 'config/config.json'
 TOKENS_FILE = 'config/tokens.json'
-WALLETS_FILE = 'config/wallets.json'
+#WALLETS_FILE = 'config/wallets.json' ||| depricated
 USERS_FILE = 'config/users.json'
 
 # Create logs directory
@@ -47,6 +51,60 @@ DEX_ABI = json.loads("""[
    "name":"swap","outputs":[],"stateMutability":"nonpayable","type":"function"}
 ]""")
 
+SCW_ABI = [
+    {
+        "inputs": [
+            {"name": "_dex", "type": "address"},
+            {"name": "_data", "type": "bytes"}
+        ],
+        "name": "executeTrade",
+        "outputs": [
+            {"name": "success", "type": "bool"},
+            {"name": "returnData", "type": "bytes"}
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {"name": "_token", "type": "address"},
+            {"name": "_dex", "type": "address"},
+            {"name": "_amount", "type": "uint256"}
+        ],
+        "name": "approveToken",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"name": "_token", "type": "address"}],
+        "name": "getTokenBalance",
+        "outputs": [{"name": "balance", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getNativeBalance",
+        "outputs": [{"name": "balance", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "owner",
+        "outputs": [{"name": "", "type": "address"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "botOperator",
+        "outputs": [{"name": "", "type": "address"}],
+        "stateMutability": "view",
+        "type": "function"
+    }
+]
 # Global caches to avoid repeated lookups
 token_contracts_cache = {}
 user_data_cache = {}
@@ -90,6 +148,17 @@ def rate_limit(calls_per_second=5):
             return ret
         return wrapper
     return decorator
+
+def get_bot_account(w3):
+    """
+    Load bot operator account (singleton across all users)
+    Call this once during initialization or cache it
+    """
+    if not BOT_PRIVATE_KEY:
+        raise Exception("BOT_PRIVATE_KEY not configured!")
+    
+    bot_account = w3.eth.account.from_key(BOT_PRIVATE_KEY)
+    return bot_account
 
 def setup_logging():
     """Setup logging for main operations and errors."""
@@ -174,7 +243,7 @@ def get_pair_info(symbol1, symbol2):
     return None
 
 def get_user_data(user_id):
-    """Get user wallet and private key from configuration files with caching and checksum conversion."""
+    """Get user SCW address and EOA from users.json with caching and checksum conversion."""
     if user_id in user_data_cache:
         return user_data_cache[user_id]
     
@@ -185,35 +254,33 @@ def get_user_data(user_id):
         return None
     
     user_info = users_data['users'][user_id]
-    wallet_address = user_info['wallet_address']
     
-    # Convert wallet address to checksum format
+    # Get SCW address
+    scw_address = user_info.get('scw_address')
+    if not scw_address:
+        error_logger.error(f"No SCW address found for user {user_id}")
+        return None
+    
+    # Get user's EOA (owner address)
+    user_wallet = user_info.get('user_wallet')
+    if not user_wallet:
+        error_logger.error(f"No user_wallet found for user {user_id}")
+        return None
+    
+    # Convert addresses to checksum format
     try:
-        wallet_address = Web3.to_checksum_address(wallet_address)
+        scw_address = Web3.to_checksum_address(scw_address)
+        user_wallet = Web3.to_checksum_address(user_wallet)
     except Exception as e:
-        error_logger.error(f"Invalid wallet address format for user {user_id}: {e}")
+        error_logger.error(f"Invalid address format for user {user_id}: {e}")
         return None
     
-    # Load wallet private key
-    wallets_data = load_json_file(WALLETS_FILE)
-    # Use original address from config to find in wallets file, but also try checksum version
-    original_address = user_info['wallet_address']
-    
-    wallet_info = None
-    if original_address in wallets_data.get('wallets', {}):
-        wallet_info = wallets_data['wallets'][original_address]
-    elif wallet_address in wallets_data.get('wallets', {}):
-        wallet_info = wallets_data['wallets'][wallet_address]
-    
-    if not wallet_info:
-        error_logger.error(f"Wallet {wallet_address} not found in wallets.json")
-        return None
-    
+    # Structure with SCW data
     user_data = {
-        'wallet_address': wallet_address,  # Store as checksum address
-        'private_key': wallet_info['private_key'],
-        'telegram_chat_id': user_info.get('telegram_chat_id'),
-        'username': user_info.get('username', user_id)
+        'scw_address': scw_address,           # User's Smart Contract Wallet
+        'user_wallet': user_wallet,           # User's EOA (owner)
+        'username': user_info.get('username', 'unknown'),
+        'telegram_chat_id': user_info.get('telegram_chat_id', '')
     }
     
     user_data_cache[user_id] = user_data
@@ -395,28 +462,38 @@ def get_price(base_asset, quote_asset):
     except Exception as e:
         raise Exception(f"Failed to get price for {base_asset}/{quote_asset}: {e}")
 
-@rate_limit(calls_per_second=3)
-def get_balances(w3, base_asset, quote_asset, wallet_address):
-    """Return (base_balance, quote_balance) for given assets and wallet."""
+
+@rate_limit(calls_per_second=5)
+def get_balances(w3, base_asset, quote_asset, scw_address):
+    """Get token balances from user's SCW."""
     try:
         base_token_info = get_token_info(base_asset)
         quote_token_info = get_token_info(quote_asset)
         
-        if not base_token_info or not quote_token_info:
-            raise Exception("Token information not found")
+        # Load SCW contract
+        scw_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(scw_address),
+            abi=SCW_ABI
+        )
         
-        base_contract = w3.eth.contract(address=base_token_info['address'], abi=ERC20_ABI)
-        quote_contract = w3.eth.contract(address=quote_token_info['address'], abi=ERC20_ABI)
+        # Get balances from SCW
+        base_balance_raw = scw_contract.functions.getTokenBalance(
+            Web3.to_checksum_address(base_token_info['address'])
+        ).call()
         
-        base_balance_raw = base_contract.functions.balanceOf(wallet_address).call()
-        quote_balance_raw = quote_contract.functions.balanceOf(wallet_address).call()
+        quote_balance_raw = scw_contract.functions.getTokenBalance(
+            Web3.to_checksum_address(quote_token_info['address'])
+        ).call()
         
         base_balance = base_balance_raw / (10 ** base_token_info['decimals'])
         quote_balance = quote_balance_raw / (10 ** quote_token_info['decimals'])
         
         return base_balance, quote_balance
+        
     except Exception as e:
-        raise Exception(f"Failed to get balances for {base_asset}/{quote_asset}: {e}")
+        error_logger.error(f"Failed to get SCW balances: {e}")
+        return 0, 0
+
 
 def calculate_total_balance_usd(base_asset, quote_asset, base_balance, quote_balance, current_price):
     """Calculate total balance in USD using token decimals from configuration."""
@@ -568,11 +645,32 @@ def log_trade(base_asset, quote_asset, user_id, action, date_str, time_str, pric
 
 @rate_limit(calls_per_second=2)
 def execute_dex_trade(w3, base_asset, quote_asset, action, quantity, user_data):
-    """Execute trade on DEX with proper checksum address handling and dynamic decimal support."""
+    """
+    Execute trade on DEX through user's SCW using bot operator wallet.
+    
+    Changes from original:
+    - Uses user_data['scw_address'] instead of private_key
+    - Bot wallet signs all transactions
+    - Calls SCW's executeTrade() and approveToken() functions
+    - Gas paid by bot operator
+    """
     try:
         base_token_info = get_token_info(base_asset)
         quote_token_info = get_token_info(quote_asset)
-        user_account = w3.eth.account.from_key(user_data['private_key'])
+        
+        # Get bot account (signs all transactions)
+        bot_account = get_bot_account(w3)
+        
+        # Get user's SCW address
+        scw_address = user_data.get('scw_address')
+        if not scw_address:
+            raise Exception(f"No SCW address found for user {user_data.get('telegram_chat_id')}")
+        
+        # Load SCW contract
+        scw_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(scw_address),
+            abi=SCW_ABI
+        )
         
         # Get DEX address for this specific pair
         pair_info = get_pair_info(base_asset, quote_asset)
@@ -581,25 +679,22 @@ def execute_dex_trade(w3, base_asset, quote_asset, action, quantity, user_data):
         
         dex_address = pair_info['dex_address']
         
+        # Determine swap direction and amounts
         if action == "BUY":
             # Buying base asset with quote asset
-            # quantity is the amount of base asset to buy
-            # We need to calculate how much quote asset to send
             _, _, current_price = get_price(base_asset, quote_asset)
-            quote_amount_needed = quantity * current_price  # Amount of quote asset needed
+            quote_amount_needed = quantity * current_price
             
             token_in_info = quote_token_info
             token_out_info = base_token_info
             amount_in = int(quote_amount_needed * (10 ** quote_token_info['decimals']))
         else:  # SELL
             # Selling base asset for quote asset
-            # quantity is the amount of base asset to sell
             token_in_info = base_token_info
             token_out_info = quote_token_info
             amount_in = int(quantity * (10 ** base_token_info['decimals']))
         
-        # Addresses are already in checksum format from get_token_info
-        token_in_contract = w3.eth.contract(address=token_in_info['address'], abi=ERC20_ABI)
+        # Load DEX contract (for encoding swap call)
         dex_contract = w3.eth.contract(address=dex_address, abi=DEX_ABI)
         
         if not PRODUCTION:
@@ -609,45 +704,153 @@ def execute_dex_trade(w3, base_asset, quote_asset, action, quantity, user_data):
                 "quantity": quantity,
                 "token_in": token_in_info['symbol'],
                 "token_out": token_out_info['symbol'],
+                "scw_address": scw_address,
                 "tx_hash": "SIMULATION"
             }
         
-        # Step 1: Approve token
-        nonce = w3.eth.get_transaction_count(user_account.address)
-        approve_tx = token_in_contract.functions.approve(dex_address, amount_in).build_transaction({
-            "chainId": CHAIN_ID,
-            "from": user_account.address,
-            "nonce": nonce,
-            "gas": 100_000,
-            "gasPrice": w3.to_wei("5", "gwei")
-        })
+        # ===== STEP 1: Approve token via SCW =====
+        main_logger.info(f"Approving {token_in_info['symbol']} for DEX via SCW...")
         
-        signed_approve = user_account.sign_transaction(approve_tx)
-        approve_hash = w3.eth.send_raw_transaction(signed_approve.raw_transaction)
-        w3.eth.wait_for_transaction_receipt(approve_hash)
+        nonce = w3.eth.get_transaction_count(bot_account.address)
         
-        # Step 2: Execute swap
-        nonce = w3.eth.get_transaction_count(user_account.address)
-        swap_tx = dex_contract.functions.swap(token_in_info['address'], amount_in).build_transaction({
+        approve_tx = scw_contract.functions.approveToken(
+            Web3.to_checksum_address(token_in_info['address']),
+            Web3.to_checksum_address(dex_address),
+            amount_in  # Approve exact amount (or use max: 2**256-1)
+        ).build_transaction({
             "chainId": CHAIN_ID,
-            "from": user_account.address,
+            "from": bot_account.address,
             "nonce": nonce,
             "gas": 200_000,
             "gasPrice": w3.to_wei("5", "gwei")
         })
         
-        signed_swap = user_account.sign_transaction(swap_tx)
+        signed_approve = bot_account.sign_transaction(approve_tx)
+        approve_hash = w3.eth.send_raw_transaction(signed_approve.raw_transaction)
+        approve_receipt = w3.eth.wait_for_transaction_receipt(approve_hash)
+        
+        if approve_receipt['status'] != 1:
+            raise Exception(f"Approval transaction failed: {approve_hash.hex()}")
+        
+        main_logger.info(f"Approval successful: {approve_hash.hex()}")
+        
+        # ===== STEP 2: Execute swap via SCW =====
+        main_logger.info(f"Executing swap via SCW...")
+        
+        # Encode the swap function call
+        swap_function = dex_contract.functions.swap(
+            Web3.to_checksum_address(token_in_info['address']),
+            amount_in
+        )
+        swap_data = swap_function._encode_transaction_data()
+        
+        # Execute trade through SCW
+        nonce = w3.eth.get_transaction_count(bot_account.address)
+        
+        execute_tx = scw_contract.functions.executeTrade(
+            Web3.to_checksum_address(dex_address),
+            bytes.fromhex(swap_data[2:])  # Remove '0x' prefix
+        ).build_transaction({
+            "chainId": CHAIN_ID,
+            "from": bot_account.address,
+            "nonce": nonce,
+            "gas": 500_000,
+            "gasPrice": w3.to_wei("5", "gwei")
+        })
+        
+        signed_swap = bot_account.sign_transaction(execute_tx)
         swap_hash = w3.eth.send_raw_transaction(signed_swap.raw_transaction)
         receipt = w3.eth.wait_for_transaction_receipt(swap_hash)
         
+        if receipt['status'] != 1:
+            raise Exception(f"Swap transaction failed: {swap_hash.hex()}")
+        
         tx_hash_hex = receipt.transactionHash.hex()
-        main_logger.info(f"DEX trade executed: {tx_hash_hex}")
-        return {"status": "SUCCESS", "tx_hash": tx_hash_hex}
+        main_logger.info(f"DEX trade executed via SCW: {tx_hash_hex}")
+        
+        return {
+            "status": "SUCCESS",
+            "tx_hash": tx_hash_hex,
+            "scw_address": scw_address,
+            "action": action,
+            "token_in": token_in_info['symbol'],
+            "token_out": token_out_info['symbol']
+        }
         
     except Exception as e:
-        error_logger.error(f"Failed to execute DEX trade: {e}")
+        error_logger.error(f"Failed to execute DEX trade via SCW: {e}")
         raise
 
+
+# ==================== ADDITIONAL HELPER FUNCTIONS ====================
+
+def get_scw_balance(w3, scw_address, token_address):
+    """
+    Get token balance from SCW
+    Useful for checking balances before trading
+    """
+    try:
+        scw_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(scw_address),
+            abi=SCW_ABI
+        )
+        
+        balance = scw_contract.functions.getTokenBalance(
+            Web3.to_checksum_address(token_address)
+        ).call()
+        
+        return balance
+        
+    except Exception as e:
+        error_logger.error(f"Failed to get SCW balance: {e}")
+        return 0
+
+
+def get_scw_native_balance(w3, scw_address):
+    """
+    Get native token balance from SCW
+    """
+    try:
+        scw_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(scw_address),
+            abi=SCW_ABI
+        )
+        
+        balance = scw_contract.functions.getNativeBalance().call()
+        return balance
+        
+    except Exception as e:
+        error_logger.error(f"Failed to get SCW native balance: {e}")
+        return 0
+
+
+def verify_scw_setup(w3, scw_address, expected_bot_operator):
+    """
+    Verify SCW is properly configured
+    Call this during user onboarding or system startup
+    """
+    try:
+        scw_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(scw_address),
+            abi=SCW_ABI
+        )
+        
+        # Verify bot operator
+        bot_operator = scw_contract.functions.botOperator().call()
+        
+        if bot_operator.lower() != expected_bot_operator.lower():
+            raise Exception(
+                f"SCW bot operator mismatch! "
+                f"Expected: {expected_bot_operator}, Got: {bot_operator}"
+            )
+        
+        main_logger.info(f"✅ SCW verified: {scw_address}")
+        return True
+        
+    except Exception as e:
+        error_logger.error(f"Failed to verify SCW: {e}")
+        return False
+    
 def calculate_trade_amounts(action, base_balance, quote_balance, price, trade_percentage, 
                           max_amount, minimum_amount, base_usd_price, quote_usd_price):
     """Calculate trade quantity and value, applying limits."""
@@ -847,7 +1050,7 @@ def process_trading_pair(w3, pair_config):
             return True
 
         move_pct = (price - base_price) / base_price
-        base_balance, quote_balance = get_balances(w3, base_asset, quote_asset, user_data['wallet_address'])
+        base_balance, quote_balance = get_balances(w3, base_asset, quote_asset, user_data['scw_address'])
         
         # Calculate USD values
         total_balance_usd, base_usd_price, quote_usd_price = calculate_total_balance_usd(
@@ -880,6 +1083,73 @@ def process_trading_pair(w3, pair_config):
         error_logger.error(f"[{base_asset}/{quote_asset}/{user_id}] Error processing trading pair: {str(e)}")
         return False
 
+
+def verify_scw_setup(w3, user_data):
+    """Verify SCW is properly configured with correct bot operator."""
+    try:
+        scw_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(user_data['scw_address']),
+            abi=SCW_ABI
+        )
+        
+        # Get bot operator from SCW
+        scw_bot_operator = scw_contract.functions.botOperator().call()
+        
+        # Get expected bot operator
+        bot_account = get_bot_account(w3)
+        
+        if scw_bot_operator.lower() != bot_account.address.lower():
+            error_logger.error(
+                f"SCW bot operator mismatch for user {user_data.get('username')}! "
+                f"Expected: {bot_account.address}, Got: {scw_bot_operator}"
+            )
+            return False
+        
+        main_logger.info(f"✅ SCW verified for user {user_data.get('username')}: {user_data['scw_address']}")
+        return True
+        
+    except Exception as e:
+        error_logger.error(f"Failed to verify SCW: {e}")
+        return False
+
+
+def get_scw_token_balance(w3, scw_address, token_address):
+    """
+    Get specific token balance from SCW.
+    Useful for additional balance checks.
+    """
+    try:
+        scw_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(scw_address),
+            abi=SCW_ABI
+        )
+        
+        balance = scw_contract.functions.getTokenBalance(
+            Web3.to_checksum_address(token_address)
+        ).call()
+        
+        return balance
+        
+    except Exception as e:
+        error_logger.error(f"Failed to get SCW token balance: {e}")
+        return 0
+
+
+def get_scw_native_balance(w3, scw_address):
+    """Get native token balance from SCW."""
+    try:
+        scw_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(scw_address),
+            abi=SCW_ABI
+        )
+        
+        balance = scw_contract.functions.getNativeBalance().call()
+        return balance
+        
+    except Exception as e:
+        error_logger.error(f"Failed to get SCW native balance: {e}")
+        return 0
+    
 def validate_trading_pair(pair_config):
     """Validate a trading pair configuration before processing."""
     required_fields = ['symbol1', 'symbol2', 'trade_percentage', 'trigger_percentage', 'userID']
@@ -909,6 +1179,7 @@ def load_config():
     main_logger.info(f"Loaded configuration for {len(config_data['trading_pairs'])} trading pairs")
     return config_data['trading_pairs']
 
+
 def validate_and_fix_addresses():
     """Validate and convert all addresses to checksum format at startup."""
     # Validate tokens.json addresses
@@ -932,18 +1203,24 @@ def validate_and_fix_addresses():
                 error_logger.error(f"Invalid DEX address for pair {pair_key}: {pair_info['dex_address']}, error: {e}")
                 return False
     
-    # Validate wallet addresses
+    # Validate SCW and user wallet addresses
     users_data = load_json_file(USERS_FILE)
     if users_data and 'users' in users_data:
         for user_id, user_info in users_data['users'].items():
             try:
-                checksum_addr = Web3.to_checksum_address(user_info['wallet_address'])
-                main_logger.info(f"User {user_id} wallet address validated: {checksum_addr}")
+                # Validate SCW address
+                scw_addr = Web3.to_checksum_address(user_info['scw_address'])
+                main_logger.info(f"User {user_id} SCW address validated: {scw_addr}")
+                
+                # Validate user wallet (EOA)
+                user_wallet = Web3.to_checksum_address(user_info['user_wallet'])
+                main_logger.info(f"User {user_id} user wallet validated: {user_wallet}")
             except Exception as e:
-                error_logger.error(f"Invalid wallet address for user {user_id}: {user_info['wallet_address']}, error: {e}")
+                error_logger.error(f"Invalid addresses for user {user_id}: {e}")
                 return False
     
     return True
+
 
 def main():
     """Main function to process all trading pairs."""
