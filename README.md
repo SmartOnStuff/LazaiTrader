@@ -1,8 +1,8 @@
 # LazaiTrader 🚀
 
-**AI-Powered Decentralized Trading Assistant on Hyperion Testnet**
+**AI-Powered Non-Custodial Trading Assistant on Hyperion Testnet**
 
-LazaiTrader is an intelligent trading assistant that combines AI-powered automation with community-driven strategy optimization. Built on the Hyperion testnet, it offers a complete trading experience through Telegram with advanced features like the Strategy Vault, real-time analytics, and AI-driven support.
+LazaiTrader is an intelligent trading assistant that combines AI-powered automation with community-driven strategy optimization. Built on the Hyperion testnet, it offers a complete **non-custodial** trading experience through Telegram with advanced features like the Strategy Vault, real-time analytics, and AI-driven support.
 
 ## 🎯 Key Features
 
@@ -11,6 +11,13 @@ LazaiTrader is an intelligent trading assistant that combines AI-powered automat
 - **Multi-Pair Support**: Trade tgMetis-USDC, tgETH-USDC, and more
 - **Real-Time Execution**: Blockchain-integrated smart contract trading
 - **Risk Management**: Configurable trade percentages, triggers, and safety limits
+
+### 🔐 Non-Custodial Security
+- **Smart Contract Wallets (SCW)**: You own your wallet, we just execute trades
+- **User-Controlled Assets**: All funds remain in your control
+- **Restricted Bot Access**: Bot can only trade on whitelisted DEXs
+- **Withdraw Anytime**: Direct withdrawals to your personal wallet
+- **No Private Keys Stored**: Zero custody of your funds
 
 ### 🧠 AI-Powered Support
 - **Alith Support Agent**: LangChain-powered customer support with document intelligence
@@ -44,12 +51,16 @@ https://t.me/LazaiTrader_alithbot
 https://t.me/LazaiTrader
 ```
 
-### 2. Get Your Funded Wallet
+### 2. Get Your Non-Custodial Wallet
 - Send `/start` to the bot
-- Receive automatically funded testnet wallet:
+- Provide your wallet address (or let us create one for you)
+- Receive your Smart Contract Wallet (SCW) address
+- Get automatically funded with testnet tokens:
   - 100 tgUSDC
   - 10,000,000 tgMetis
   - 0.1 testgETH
+
+**Important**: Your SCW is controlled by YOU. We can only execute trades on whitelisted DEXs.
 
 ### 3. Configure Your Strategy
 ```
@@ -61,12 +72,13 @@ https://t.me/LazaiTrader
 /chart        # View your trading performance
 /contribute   # Add data to Strategy Vault
 /suggestion   # Get AI recommendations
-/balance      # Check wallet balances
+/balance      # Check SCW balances
+/withdraw     # Withdraw funds to your personal wallet
 ```
 
 ## 🏗️ System Architecture
 
-LazaiTrader employs a sophisticated multi-component architecture designed for scalability, security, and intelligence:
+LazaiTrader employs a sophisticated multi-component architecture designed for scalability, security, and intelligence with **non-custodial** wallet management:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -79,8 +91,8 @@ LazaiTrader employs a sophisticated multi-component architecture designed for sc
 │  │                 │    │                 │    │             │ │
 │  │ • LangChain     │    │ • User Mgmt     │    │ • Hyperion  │ │
 │  │ • Vector Store  │    │ • Config Mgmt   │    │   Testnet   │ │
-│  │ • GitHub Docs   │    │ • Trade Exec    │    │ • Smart     │ │
-│  │ • DeepSeek AI   │    │ • Visualization │    │   Contracts │ │
+│  │ • GitHub Docs   │    │ • Trade Exec    │    │ • SCW       │ │
+│  │ • DeepSeek AI   │    │ • Visualization │    │   Factory   │ │
 │  │ • Memory Buffer │    │ • Strategy      │    │ • DEX       │ │
 │  │                 │    │   Vault         │    │ • Oracle    │ │
 │  └─────────────────┘    └─────────────────┘    └─────────────┘ │
@@ -93,6 +105,14 @@ LazaiTrader employs a sophisticated multi-component architecture designed for sc
 │  │  • Bot Commands        • Inline Keyboards              │   │
 │  │  • Message Handling    • File Uploads                  │   │
 │  │  • Chart Generation    • Real-time Notifications      │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                   │                             │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │        SMART CONTRACT WALLET LAYER (NON-CUSTODIAL)      │   │
+│  │                                                         │   │
+│  │  • User Ownership      • Restricted Bot Access         │   │
+│  │  • DEX Whitelist       • Direct Withdrawals            │   │
+│  │  • Trade Execution     • Zero Custody                  │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                   │                             │
 │  ┌─────────────────────────────────────────────────────────┐   │
@@ -127,21 +147,76 @@ graph TD
     L --> N[IPFS Upload]
     L --> O[TEE Processing]
     
-    J --> P[Hyperion Blockchain]
-    P --> Q[Smart Contracts]
+    J --> P[User's SCW]
+    P --> Q[Whitelisted DEXs]
     P --> R[Price Oracle]
     
-    K --> S[Chart Generation]
-    S --> T[User Visualization]
+    J --> S[Bot Wallet]
+    S -->|Signs Txs| P
+    
+    K --> T[Chart Generation]
+    T --> U[User Visualization]
+    
+    A -->|Withdrawal| V[SCW Withdraw Function]
+    V -->|Funds| W[User's Personal Wallet]
 ```
 
+## 🔐 Non-Custodial Architecture
+
+### Smart Contract Wallet (SCW) Design
+
+```solidity
+// LazaiTradingWallet.sol - Simplified Structure
+contract LazaiTradingWallet {
+    address public immutable owner;         // User's EOA (YOU)
+    address public immutable botOperator;   // Bot's wallet (trades only)
+    address public immutable factory;       // DEX whitelist manager
+    
+    // ✅ Bot CAN: Execute trades on whitelisted DEXs
+    function executeTrade(address _dex, bytes calldata _data) 
+        external onlyBotOperator onlyWhitelistedDEX;
+    
+    // ✅ Bot CAN: Approve tokens for whitelisted DEXs
+    function approveToken(address _token, address _dex, uint256 _amount)
+        external onlyBotOperator onlyWhitelistedDEX;
+    
+    // ✅ User & Bot CAN: Withdraw to owner's wallet
+    function withdrawAll(address _token)
+        external onlyBotOrOwner;
+    
+    // ❌ Bot CANNOT: Trade on non-whitelisted DEXs
+    // ❌ Bot CANNOT: Transfer funds to arbitrary addresses
+    // ❌ Bot CANNOT: Prevent owner withdrawals
+}
+```
+
+### Security Model
+
+**What the Bot CAN do:**
+- ✅ Execute trades on whitelisted DEXs only
+- ✅ Approve tokens for whitelisted DEXs only
+- ✅ Check balances
+- ✅ Initiate withdrawals to your wallet
+
+**What the Bot CANNOT do:**
+- ❌ Access your private keys
+- ❌ Trade on non-whitelisted exchanges
+- ❌ Transfer your funds to arbitrary addresses
+- ❌ Prevent you from withdrawing
+- ❌ Change the owner of your SCW
+
+**What YOU can do:**
+- ✅ Withdraw all funds anytime
+- ✅ Own your Smart Contract Wallet
+- ✅ Control your assets completely
+- ✅ View all transactions on-chain
 
 ### Core Components
 
 #### 1. **Main Trading Bot** (`plugins/main_bot.py`)
-- **User Management**: Registration, wallet assignment, balance tracking
+- **User Management**: Registration, SCW deployment, balance tracking
 - **Configuration System**: Interactive strategy setup with risk profiles
-- **Trading Execution**: Automated martingale strategy with multipliers
+- **Trading Execution**: Automated martingale strategy via SCW
 - **Analytics**: Chart generation, PnL calculation, performance tracking
 - **Strategy Vault**: Secure data contribution and AI-powered suggestions
 
@@ -153,17 +228,24 @@ graph TD
 
 #### 3. **Trading Engine** (`main.py`)
 - **Price Monitoring**: Multi-source price feeds (DexScreener, CoinGecko)
-- **Trade Execution**: Smart contract integration with DEX
+- **SCW Trade Execution**: Non-custodial smart contract integration
 - **Risk Management**: Configurable safety limits and multipliers
 - **Oracle Updates**: Real-time price feed updates for trading pairs
 
-## 📋 Installation & Setup  - !!! THIS IS NOT REQUIRED TO USERS - ONLY FOR DEVELOPERS FORKING THIS REPOSITORY !!!
+#### 4. **Smart Contract Wallet System**
+- **Factory Contract**: Deploys and manages user SCWs
+- **DEX Whitelist**: Controls which exchanges can be used
+- **Bot Operator**: Limited execution permissions
+- **User Ownership**: Complete control with withdrawal rights
+
+## 📋 Installation & Setup - !!! THIS IS NOT REQUIRED FOR USERS - ONLY FOR DEVELOPERS FORKING THIS REPOSITORY !!!
 
 ### Prerequisites
 ```bash
 Python >= 3.8
 Node.js >= 16 (for IPFS integration)
 Git
+Solidity compiler (for smart contract deployment)
 ```
 
 ### Environment Setup
@@ -191,6 +273,12 @@ RPC_URL=https://hyperion-testnet.metisdevops.link
 CHAIN_ID=133717
 ORACLE_OWNER_PK=your_oracle_private_key
 
+# Bot Wallet Configuration (NON-CUSTODIAL)
+BOT_WALLET_PRIVATE_KEY=your_bot_operator_key  # Signs SCW transactions only
+
+# Smart Contract Addresses
+SCW_FACTORY_ADDRESS=your_factory_contract_address
+
 # AI & API Keys
 DEEPSEEK_API_KEY=your_deepseek_api_key
 DEEPSEEK_API_URL=https://api.deepseek.com/v1/chat/completions
@@ -205,199 +293,101 @@ PRODUCTION=0  # Set to 1 for production trading
 
 4. **Configuration Files**
 Create `config/` directory with:
-- `users.json` - User registrations
+- `users.json` - User registrations with SCW addresses
+  ```json
+  {
+    "users": {
+      "telegram_id": {
+        "user_wallet": "0x...",      // User's personal EOA
+        "scw_address": "0x...",      // User's SCW contract
+        "telegram_chat_id": "...",
+        "username": "...",
+        "registered_at": "..."
+      }
+    }
+  }
+  ```
 - `config.json` - Trading configurations  
-- `tokens.json` - Token contract addresses
-- `wallets.json` - Wallet private keys
+- `tokens.json` - Token contract addresses and DEX pairs
 
-5. **Wallet Setup**
-Add funded wallet addresses to `plugins/addresses.txt`:
-```
-0x1234567890123456789012345678901234567890
-0x2345678901234567890123456789012345678901
-...
+**Note**: `wallets.json` is **NO LONGER USED** - we don't store user private keys!
+
+5. **Smart Contract Deployment**
+Deploy the SCW Factory contract:
+```bash
+# Deploy Factory with DEX whitelist
+# Deploy SCW for each user via Factory
+# Configure bot operator address
 ```
 
 ### Running the System
 
 ```bash
-# Start Alith Support Agent
-python plugins/alith_bot.py &
-
 # Start Main Trading Bot
-python plugins/main_bot.py &
+python plugins/main_bot.py
 
-# Start Trading Engine (for automated execution)
+# Start Alith Support Agent
+python plugins/alith_bot.py
+
+# Run scheduled trading execution
 python main.py
 
-# Or run as cron job for regular execution
-# */5 * * * * cd /path/to/LazaiTrader && python main.py
+# Run all with process manager (recommended)
+pm2 start ecosystem.config.js
 ```
 
-## 🎮 User Guide
+## 🔧 Technical Details
 
-### Getting Started
+### Non-Custodial Trading Flow
 
-#### 1. **Registration & Wallet**
-```bash
-/start          # Register and get funded wallet
-/wallet         # View your wallet address
-/balance        # Check token balances
-```
-
-#### 2. **Strategy Configuration**
-```bash
-/config         # Interactive strategy setup
-/myconfig       # View active configurations
-/deleteconfig   # Remove configurations
-```
-
-**Configuration Options:**
-- **Trading Pairs**: tgMetis-USDC, tgETH-USDC
-- **Risk Profiles**: Conservative (5%/5%/$20) or Aggressive (20%/15%/$100)
-- **Fine-tuning**: Adjust trade percentage, trigger percentage, max amounts
-
-#### 3. **Analytics & Optimization**
-```bash
-/chart          # View trading charts and PnL
-/contribute     # Add data to Strategy Vault
-/suggestion     # Get AI strategy recommendations
-```
-
-#### 4. **Community Support**
-```bash
-# Use @LazaiTrader_alithbot for:
-# • Strategy advice
-# • Technical questions
-# • Command help
-# • Troubleshooting
-```
-
-### Trading Strategy Explained
-
-**Martingale Strategy with Multipliers:**
-1. **Base Trigger**: Price moves by trigger_percentage (e.g., ±5%)
-2. **Trade Execution**: Use trade_percentage of wallet (e.g., 5%)
-3. **Consecutive Multiplier**: 1.5x increase for same-direction trades
-4. **Safety Limits**: Max trade amounts and minimum thresholds
-
-**Example Flow:**
-```
-Price drops 5% → Buy $10 worth of tgMetis
-Price drops 5% again → Buy $15 worth (1.5x multiplier)  
-Price drops 5% again → Buy $22.50 worth (1.5x multiplier)
-Price recovers 5% → Sell $22.50 worth
-Price recovers 5% → Sell $15 worth
-```
-
-## 🔧 Configuration Files
-
-### `config/tokens.json`
-```json
-{
-  "tokens": {
-    "tgMetis": {
-      "address": "0x69Dd3C70Ae76256De7Ec9AF5893DEE49356D45fc",
-      "decimals": 18,
-      "symbol": "tgMetis"
-    },
-    "tgUSDC": {
-      "address": "0x6Eb66c8bBD57FdA71ecCAAc40a56610C2CA8FDb8",
-      "decimals": 18,
-      "symbol": "tgUSDC"
-    }
-  },
-  "pairs": {
-    "tgMetis-tgUSDC": {
-      "dex_address": "0x4704759E4a426b29615e4841B092357460925eFf",
-      "price_source": "dexscreener",
-      "price_api": "https://api.dexscreener.com/latest/dex/pairs/metis/0xb7af89d7fe88d4fa3c9b338a0063359196245eaa"
-    }
-  }
-}
-```
-
-### `config/config.json`
-```json
-{
-  "trading_pairs": [
-    {
-      "userID": "telegram_user_id",
-      "symbol1": "tgMetis",
-      "symbol2": "tgUSDC",
-      "trade_percentage": 0.05,
-      "trigger_percentage": 0.05,
-      "max_amount": 20.0,
-      "minimum_amount": 0.0,
-      "multiplier": 1.5
-    }
-  ]
-}
-```
-
-## 🤖 AI Support Agent
-
-### Features
-- **Document Intelligence**: Automated loading from GitHub repository
-- **Vector Search**: Semantic search across documentation
-- **Contextual Memory**: Maintains conversation history
-- **Personality**: Support-focused, non-sales approach
-
-### Technical Implementation
 ```python
-# Vector Store Creation
-def create_vector_store():
-    raw_docs = GithubFileLoader(
-        repo="smartonstuff/LazaiTrader",
-        access_token=GITHUB_ACCESS_KEY,
-        file_filter=lambda file_path: re.match(
-            f"docs/.*\\.mdx?", file_path
-        ) is not None,
-    ).load()
+# 1. User registration creates SCW
+async def register_user(telegram_id, user_wallet):
+    # Deploy SCW via Factory
+    scw_address = factory.createWallet(user_wallet, bot_operator)
     
-    text_chunks = []
-    for doc in raw_docs:
-        chunks = chunk_text(doc.page_content.strip(), overlap_percent=0.2)
-        text_chunks.extend(chunks)
+    # Store in users.json
+    users_data[telegram_id] = {
+        'user_wallet': user_wallet,
+        'scw_address': scw_address,
+        ...
+    }
+
+# 2. Bot executes trade through SCW (not directly)
+def execute_dex_trade(w3, base_asset, quote_asset, action, quantity, user_data):
+    # Load bot account (signs transactions)
+    bot_account = get_bot_account(w3)
     
-    return MilvusStore().save_docs(text_chunks)
+    # Load user's SCW
+    scw_contract = w3.eth.contract(address=user_data['scw_address'], abi=SCW_ABI)
+    
+    # Step 1: Approve token via SCW
+    scw_contract.functions.approveToken(token, dex, amount).build_transaction({
+        'from': bot_account.address,  # Bot signs
+        ...
+    })
+    
+    # Step 2: Execute trade via SCW
+    swap_data = dex_contract.functions.swap(token_in, amount_in).encode()
+    scw_contract.functions.executeTrade(dex, swap_data).build_transaction({
+        'from': bot_account.address,  # Bot signs
+        ...
+    })
+
+# 3. Balance checking from SCW
+def get_balances(w3, base_asset, quote_asset, scw_address):
+    scw_contract = w3.eth.contract(address=scw_address, abi=SCW_ABI)
+    base_balance = scw_contract.functions.getTokenBalance(base_token).call()
+    quote_balance = scw_contract.functions.getTokenBalance(quote_token).call()
+    return base_balance, quote_balance
 ```
 
-### Usage
-```bash
-# Direct interaction with support agent
-https://t.me/LazaiTrader_alithbot
+### Strategy Vault Integration
 
-# Or within community group
-@LazaiTrader group → mention the Alith agent
-```
-
-## 📊 Strategy Vault
-
-### Revolutionary Data Sharing System
-
-The Strategy Vault enables secure, privacy-preserving strategy optimization through community intelligence:
-
-#### Key Features
-- **TEE Security**: Trusted Execution Environment processing
-- **Wallet-Signed Encryption**: User-controlled data privacy
-- **Anonymous Analytics**: Collective intelligence without identity exposure
-- **AI Recommendations**: Personalized suggestions based on performance data
-
-#### Usage Flow
-```bash
-1. /contribute    # Encrypt and upload your trading data
-2. Wait 24h       # Cooldown period for data quality
-3. /suggestion    # Get AI-powered strategy recommendations
-4. Optimize       # Apply suggestions to improve performance
-5. Repeat         # Continuous improvement cycle
-```
-
-#### Technical Process
 ```python
-# Data Contribution
-async def data_contribution():
-    # 1. Collect trading data and configuration
+# Data Contribution (Privacy-Preserving)
+async def contribute_data():
+    # 1. Collect trading data from SCW
     # 2. Encrypt using wallet signature
     # 3. Upload to IPFS
     # 4. Register with LazAI network
@@ -415,12 +405,18 @@ async def get_suggestion():
 
 ### Multi-Layer Protection
 
-#### 1. **Testnet Safety**
-- No real funds at risk
-- Admin-controlled wallets during testing
-- Safe learning environment
+#### 1. **Non-Custodial Security**
+- Smart Contract Wallets with restricted bot access
+- User owns private keys to their EOA
+- Bot cannot access user funds outside trading
+- Transparent on-chain transaction history
 
-#### 2. **Data Encryption**
+#### 2. **Testnet Safety**
+- No real funds at risk
+- Safe learning environment
+- Full feature testing without financial risk
+
+#### 3. **Data Encryption**
 ```python
 # Wallet-signed encryption
 encryption_seed = "Sign to retrieve your encryption key"
@@ -429,15 +425,16 @@ password = client.wallet.sign_message(message).signature.hex()
 encrypted_data = encrypt(privacy_data.encode(), password)
 ```
 
-#### 3. **TEE Integration**
+#### 4. **TEE Integration**
 - Trusted Execution Environment for sensitive processing
 - Anonymous data analysis without privacy exposure
 - Secure multi-party computation capabilities
 
-#### 4. **Access Controls**
+#### 5. **Access Controls**
 - 24-hour cooldown periods for data contributions
 - User-isolated data storage
 - Permission-based feature access
+- Whitelisted DEX enforcement
 
 ## 🛠️ API Reference
 
@@ -446,10 +443,10 @@ encrypted_data = encrypt(privacy_data.encode(), password)
 #### User Management
 | Command     | Description                          |
 |-------------|--------------------------------------|
-| `/start`    | Register and receive funded wallet   |
-| `/wallet`   | Display wallet address               |
-| `/address`  | Alternative wallet display           |
-| `/balance`  | Show token balances                  |
+| `/start`    | Register and receive SCW address     |
+| `/wallet`   | Display your SCW address             |
+| `/address`  | Alternative SCW display              |
+| `/balance`  | Show token balances in your SCW      |
 
 #### Configuration
 | Command        | Description                        |
@@ -468,7 +465,7 @@ encrypted_data = encrypt(privacy_data.encode(), password)
 #### Utility
 | Command     | Description                          |
 |-------------|--------------------------------------|
-| `/withdraw` | Withdrawal info (mainnet only)       |
+| `/withdraw` | Withdraw funds to your wallet        |
 | `/cancel`   | Cancel active conversation           |
 
 ### Alith Agent Integration
@@ -484,6 +481,7 @@ encrypted_data = encrypt(privacy_data.encode(), password)
 - **PnL Calculation**: Real-time profit/loss tracking  
 - **Trade Markers**: Visual buy/sell indicators
 - **Balance Tracking**: USD value evolution over time
+- **SCW Balance Integration**: Tracks funds in your Smart Contract Wallet
 
 ### Log Structure
 ```
@@ -500,24 +498,28 @@ logs/
 - **Success Rate**: Profitable vs unprofitable trades
 - **Balance Evolution**: USD value changes over time
 - **Strategy Performance**: Comparison across configurations
+- **Gas Costs**: Transaction fees paid by bot operator
 
 ## 🚀 Roadmap
 
-### Phase 1: Enhanced Security (Q4 2025)
-- **Wallet PK Reveal**: User-controlled private key access
-- **Privacy Withdrawals**: Compliant privacy layer for Hyperion
+### Phase 1: Enhanced Non-Custodial Features (Q4 2025)
+- **Multi-Signature Support**: Enhanced security for large balances
+- **Custom DEX Whitelisting**: User-controlled exchange permissions
+- **Advanced Withdrawal Options**: Scheduled and conditional withdrawals
 
 ### Phase 2: Advanced Trading (Q1 2026)
 - **Social Sentiment Signals**: Market sentiment integration
 - **Bull/Bear Triggers**: Custom market condition responses
 - **Strategy Auto-Upgrades**: Continuous improvement algorithms
+- **Cross-Chain SCW**: Multi-network smart contract wallets
 
 ### Phase 3: Community Features (Q2 2026)
 - **Enhanced Vault**: Advanced analytics and insights
 - **Multi-Network**: Expansion to other blockchain networks
+- **Governance**: Community-driven DEX whitelisting
 
-### Phase 4: Enterprise (Q3-4 2025)
-- **Institutional Features**: Advanced risk management
+### Phase 4: Enterprise (Q3-Q4 2026)
+- **Institutional SCW**: Advanced risk management for institutions
 - **API Access**: Programmatic trading interfaces
 - **White-Label Solutions**: Custom deployment options
 
@@ -546,6 +548,7 @@ python -m pytest tests/
 - **Security Audits**: Smart contract and system security
 - **Documentation**: User guides and technical documentation
 - **Testing**: Automated testing and quality assurance
+- **Smart Contract Development**: SCW enhancements
 
 ### External Resources
 
@@ -554,8 +557,18 @@ python -m pytest tests/
 - **LazAI Network**: [https://lazai.network](https://lazai.network)
 - **LangChain**: [https://langchain.com](https://langchain.com)
 - **Web3.py**: [https://web3py.readthedocs.io](https://web3py.readthedocs.io)
+- **OpenZeppelin Contracts**: [https://docs.openzeppelin.com/contracts](https://docs.openzeppelin.com/contracts)
 
 ## ❓ FAQ
+
+**Q: Who controls my funds?**
+A: YOU do! Your funds are in a Smart Contract Wallet that YOU own. The bot can only execute trades on whitelisted DEXs.
+
+**Q: Can the bot steal my funds?**
+A: No. The bot cannot transfer your funds to arbitrary addresses or prevent you from withdrawing.
+
+**Q: What happens if I want to stop trading?**
+A: Simply use `/withdraw` to move all funds back to your personal wallet anytime.
 
 **Q: Is real money involved during testing?**
 A: No, all testing uses testnet tokens with no real value.
@@ -572,8 +585,14 @@ A: Only when prices move by your configured trigger percentage.
 **Q: Can I change my strategy?**
 A: Yes, use `/config` anytime or `/deleteconfig` to start fresh.
 
+**Q: What are the gas costs?**
+A: The bot operator pays gas fees for trade execution. You only pay gas when withdrawing.
+
+**Q: Can I use my existing wallet?**
+A: Yes! Provide your wallet address during registration, and we'll deploy an SCW connected to it.
+
 **Q: When will mainnet be available?**
-A: check on https://Hyperion.metis.io for updates
+A: Check https://Hyperion.metis.io for updates
 
 ## 🆘 Support
 
@@ -583,11 +602,12 @@ A: check on https://Hyperion.metis.io for updates
 3. **Documentation**: Check this README and docs folder
 4. **GitHub Issues**: Submit technical issues
 
-### Common Issues - developers
+### Common Issues - Developers
 - **Bot not responding**: Check token validity and network connection
 - **Configuration errors**: Validate JSON syntax in config files
-- **Trade execution issues**: Verify wallet balance and contract addresses
+- **Trade execution issues**: Verify SCW balance and contract addresses
 - **Chart generation problems**: Ensure pandas/matplotlib dependencies
+- **SCW deployment fails**: Check factory contract address and bot operator setup
 
 ### Error Reporting
 ```bash
@@ -599,6 +619,9 @@ python -c "import json; print(json.load(open('config/tokens.json')))"
 
 # Test connectivity
 python -c "from web3 import Web3; w3 = Web3(Web3.HTTPProvider('https://hyperion-testnet.metisdevops.link')); print('Connected:', w3.is_connected())"
+
+# Verify SCW deployment
+python -c "from web3 import Web3; w3 = Web3(Web3.HTTPProvider('https://hyperion-testnet.metisdevops.link')); print('SCW Code:', w3.eth.get_code('YOUR_SCW_ADDRESS'))"
 ```
 
 ## 📄 License
@@ -613,11 +636,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **DeepSeek AI** for intelligent conversation capabilities
 - **LangChain** for document intelligence framework
 - **Telegram** for bot platform and community features
+- **OpenZeppelin** for secure smart contract libraries
 
 ---
 
 **Built by gMetis using the Alith AI framework**
 
-*Join the revolution in decentralized trading intelligence. Trade smart, learn collectively, win together.*
+*Trade smart with full control. Non-custodial, secure, intelligent.*
 
 🚀 **Start your journey**: https://t.me/LazaiTrader_bot
+
+🔐 **Your keys, your funds, your control.**
