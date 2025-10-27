@@ -20,7 +20,7 @@ LazaiTrader is an intelligent trading assistant that combines AI-powered automat
 - **No Private Keys Stored**: Zero custody of your funds
 
 ### 🧠 AI-Powered Support
-- **Alith Support Agent**: LangChain-powered customer support with document intelligence
+- **Alith Support Agent**: LazaiNetwork's Alith-powered customer support with document intelligence
 - **Strategy Vault**: Secure, privacy-preserving community strategy sharing
 - **Personalized Suggestions**: AI recommendations based on collective performance data
 - **Vector-Based Knowledge**: GitHub documentation integration with semantic search
@@ -33,7 +33,6 @@ LazaiTrader is an intelligent trading assistant that combines AI-powered automat
 
 ### 🔒 Security & Privacy
 - **TEE Integration**: Trusted Execution Environment for secure data processing
-- **Wallet-Signed Encryption**: User-controlled data privacy
 - **Testnet Safety**: Risk-free testing environment
 - **Decentralized Storage**: IPFS-based data distribution
 
