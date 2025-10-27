@@ -1,3 +1,6 @@
+
+![Logo](logo.jpg "Logo")
+
 # LazaiTrader 🚀
 
 
@@ -5,8 +8,6 @@
 
 LazaiTrader is an intelligent trading assistant that combines AI-powered automation with community-driven strategy optimization. Built on the Hyperion testnet, it offers a complete **non-custodial** trading experience through Telegram with advanced features like the Strategy Vault, real-time analytics, and AI-driven support.
 
-
-![Logo](logo.jpg "Logo")
 
 
 ## 🎯 Key Features
