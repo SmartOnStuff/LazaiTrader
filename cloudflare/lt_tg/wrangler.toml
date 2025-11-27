@@ -1,0 +1,57 @@
+name = "lt_tg"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+type = "module"
+
+# D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "lazaitrader"
+database_id = "64791295-2134-4306-a6e9-4a45619aab05"
+
+# Service Bindings - Deposit Worker
+[[services]]
+binding = "DEPOSIT_WORKER"
+service = "lt-tg-deposit"
+
+# START_WORKER Service Binding (if it exists)
+[[services]]
+binding = "START_WORKER"
+service = "lt-tg-start"
+
+# Withdrawal Worker Service Binding
+[[services]]
+binding = "WITHDRAWAL_WORKER"
+service = "lt-tg-withdrawal"
+
+
+# Balance Worker Service Binding
+[[services]]
+binding = "BALANCE_WORKER"
+service = "lt-tg-balance"
+
+# Bind account-level secrets to this worker
+# [[secrets_store_secrets]]
+# binding = "BOT_TOKEN"
+# store_id = "624605538ad54f809d07c4424d7dd2d1"
+# secret_name = "BOT_TOKEN"
+
+# [[secrets_store_secrets]]
+# binding = "FACTORY_CONTRACT_ADDRESS"
+# store_id = "624605538ad54f809d07c4424d7dd2d1"
+# secret_name = "FACTORY_CONTRACT_ADDRESS"
+
+# [[secrets_store_secrets]]
+# binding = "BOT_PRIVATE_KEY"
+# store_id = "624605538ad54f809d07c4424d7dd2d1"
+# secret_name = "BOT_PRIVATE_KEY"
+
+[env.production]
+# Production environment settings
+
+[observability]
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true

@@ -1,0 +1,20 @@
+name = "lt-tg-balance"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+type = "module"
+
+# D1 Database Binding (same database as main worker)
+[[d1_databases]]
+binding = "DB"
+database_name = "lazaitrader"
+database_id = "64791295-2134-4306-a6e9-4a45619aab05"
+
+[env.production]
+# Production environment settings
+
+[observability]
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true

@@ -1,0 +1,23 @@
+name = "lt-tg-start"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# This worker is ONLY accessible via Service Binding from lt_tg
+# No public routes - internal microservice only
+workers_dev = false
+
+# D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "lazaitrader"
+database_id = "64791295-2134-4306-a6e9-4a45619aab05"
+
+[env.production]
+# Production environment settings
+
+[observability]
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
