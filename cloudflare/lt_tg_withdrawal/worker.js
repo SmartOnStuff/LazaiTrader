@@ -28,11 +28,11 @@
 
 import { ethers } from 'ethers';
 
-// SCW Contract ABI - only the functions we need
+// SCW Contract ABI - Complete from LazaiTradingWallet contract
 const SCW_ABI = [
   {
     inputs: [
-      { name: '_token', type: 'address' }
+      { internalType: 'address', name: '_token', type: 'address' }
     ],
     name: 'withdrawAll',
     outputs: [],
@@ -45,6 +45,35 @@ const SCW_ABI = [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function'
+  },
+  {
+    inputs: [
+      { internalType: 'address', name: '_token', type: 'address' }
+    ],
+    name: 'withdrawAllTokens',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function'
+  },
+  {
+    inputs: [
+      { internalType: 'address', name: '_token', type: 'address' }
+    ],
+    name: 'getTokenBalance',
+    outputs: [
+      { internalType: 'uint256', name: 'balance', type: 'uint256' }
+    ],
+    stateMutability: 'view',
+    type: 'function'
+  },
+  {
+    inputs: [],
+    name: 'getNativeBalance',
+    outputs: [
+      { internalType: 'uint256', name: 'balance', type: 'uint256' }
+    ],
+    stateMutability: 'view',
+    type: 'function'
   }
 ];
 
@@ -56,12 +85,12 @@ export default {
 
     try {
       const payload = await request.json();
-      let { userId, userWallet, scwAddress, chainId, rpcUrl } = payload;
+      let { userId, userWallet, scwAddress, tokenAddress, chainId, rpcUrl } = payload;
 
       // Validate input
-      if (!userId || !userWallet || !scwAddress || !chainId || !rpcUrl) {
+      if (!userId || !userWallet || !scwAddress || chainId === undefined || !rpcUrl) {
         console.log('[withdrawal] Missing required parameters:', {
-          userId, userWallet, scwAddress, chainId, rpcUrl
+          userId, userWallet, scwAddress, tokenAddress, chainId, rpcUrl
         });
         return jsonResponse({
           success: false,
@@ -74,7 +103,7 @@ export default {
       userId = parseInt(userId);
       chainId = parseInt(chainId);
 
-      console.log(`[withdrawal] Processing withdrawal for userId: ${userId}, SCW: ${scwAddress}, Chain: ${chainId}`);
+      console.log(`[withdrawal] Processing withdrawal for userId: ${userId}, SCW: ${scwAddress}, Token: ${tokenAddress}, Chain: ${chainId}`);
 
       // Get bot private key for executing withdrawal
       const botPrivateKey = env.BOT_PRIVATE_KEY;
@@ -96,9 +125,58 @@ export default {
       // Create SCW contract instance
       const scwContract = new ethers.Contract(scwAddress, SCW_ABI, signer);
 
-      // Execute withdrawAll (no parameters needed - withdraws everything to owner)
-      console.log(`[withdrawal] Executing withdrawAll on SCW for all tokens and native balance`);
-      const tx = await scwContract.withdrawAll(ethers.ZeroAddress); // address(0) = skip token withdrawal, withdraw all native
+      // Fetch balance BEFORE withdrawal to record the amount
+      let withdrawnAmount = '0';
+      try {
+        if (tokenAddress === ethers.ZeroAddress) {
+          // Get native balance
+          const nativeBalance = await scwContract.getNativeBalance();
+          withdrawnAmount = nativeBalance.toString();
+          console.log(`[withdrawal] Native balance: ${withdrawnAmount}`);
+        } else {
+          // Get token balance
+          const tokenBalance = await scwContract.getTokenBalance(tokenAddress);
+          withdrawnAmount = tokenBalance.toString();
+          console.log(`[withdrawal] Token balance: ${withdrawnAmount}`);
+        }
+      } catch (balanceError) {
+        console.warn(`[withdrawal] Could not fetch balance: ${balanceError.message}`);
+        // Continue anyway - we'll use '0' as placeholder
+        withdrawnAmount = '0';
+      }
+
+      let tx;
+      
+      // Check if withdrawing native only or a specific token
+      if (tokenAddress === ethers.ZeroAddress) {
+        // Withdraw native balance only
+        console.log(`[withdrawal] Executing withdrawAllNative on SCW`);
+        try {
+          tx = await scwContract.withdrawAllNative();
+          console.log(`[withdrawal] withdrawAllNative transaction sent: ${tx.hash}`);
+        } catch (contractError) {
+          console.error('[withdrawal] withdrawAllNative failed:', contractError.message);
+          return jsonResponse({
+            success: false,
+            error: `Failed to execute native withdrawal: ${contractError.message}`,
+            errorCode: 'WITHDRAWAL_FAILED'
+          }, 500);
+        }
+      } else {
+        // Withdraw specific token (includes native in same tx with withdrawAll)
+        console.log(`[withdrawal] Executing withdrawAll(${tokenAddress}) on SCW`);
+        try {
+          tx = await scwContract.withdrawAll(tokenAddress);
+          console.log(`[withdrawal] withdrawAll(token) transaction sent: ${tx.hash}`);
+        } catch (contractError) {
+          console.error('[withdrawal] withdrawAll failed:', contractError.message);
+          return jsonResponse({
+            success: false,
+            error: `Failed to execute withdrawal: ${contractError.message}`,
+            errorCode: 'WITHDRAWAL_FAILED'
+          }, 500);
+        }
+      }
       
       console.log(`[withdrawal] Transaction sent: ${tx.hash}`);
 
@@ -126,14 +204,16 @@ export default {
 
       console.log(`[withdrawal] ✅ Withdrawal successful: ${tx.hash}`);
 
-      // Store withdrawal in database
-      await storeWithdrawalInDatabase(userId, scwAddress, tx.hash, chainId, env);
+      // Store withdrawal in database with actual amount
+      await storeWithdrawalInDatabase(userId, scwAddress, tx.hash, tokenAddress, withdrawnAmount, chainId, env);
 
       return jsonResponse({
         success: true,
         txHash: tx.hash,
         to: userWallet,
-        chainId: chainId
+        tokenAddress: tokenAddress,
+        chainId: chainId,
+        amount: withdrawnAmount
       });
 
     } catch (error) {
@@ -167,9 +247,9 @@ async function waitForTransaction(provider, txHash, timeoutMs = 300000) {
 /**
  * Store withdrawal record in database
  */
-async function storeWithdrawalInDatabase(userId, scwAddress, txHash, chainId, env) {
+async function storeWithdrawalInDatabase(userId, scwAddress, txHash, tokenAddress, withdrawnAmount, chainId, env) {
   try {
-    console.log(`[storeWithdrawalInDatabase] Recording withdrawal for user ${userId}`);
+    console.log(`[storeWithdrawalInDatabase] Recording withdrawal for user ${userId}, token: ${tokenAddress}, amount: ${withdrawnAmount}`);
     
     // Get user wallet
     const user = await env.DB.prepare(
@@ -181,13 +261,34 @@ async function storeWithdrawalInDatabase(userId, scwAddress, txHash, chainId, en
       return;
     }
 
-    // Insert withdrawal record (single record for all tokens on chain)
+    // Get token info if not native
+    let tokenId = null;
+    if (tokenAddress !== ethers.ZeroAddress) {
+      const token = await env.DB.prepare(
+        'SELECT TokenID FROM Tokens WHERE TokenAddress = ?'
+      ).bind(tokenAddress).first();
+      
+      if (token) {
+        tokenId = token.TokenID;
+      }
+    }
+
+    // Insert withdrawal record with actual amount
     await env.DB.prepare(
       `INSERT INTO Withdrawals (UserID, SCWAddress, TokenID, TokenAddress, Amount, RecipientAddress, TxHash, ChainID, Status, WithdrawnAt)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', datetime('now'))`
-    ).bind(userId, scwAddress, null, null, null, user.UserWallet, txHash, chainId).run();
+    ).bind(
+      userId, 
+      scwAddress, 
+      tokenId, 
+      tokenAddress === ethers.ZeroAddress ? null : tokenAddress, 
+      withdrawnAmount,
+      user.UserWallet, 
+      txHash, 
+      chainId
+    ).run();
 
-    console.log(`[storeWithdrawalInDatabase] ✓ Withdrawal recorded: ${txHash}`);
+    console.log(`[storeWithdrawalInDatabase] ✓ Withdrawal recorded: ${txHash} (${withdrawnAmount} wei)`);
   } catch (error) {
     console.error('[storeWithdrawalInDatabase] Error:', error);
     // Don't throw - withdrawal was successful, just logging failed

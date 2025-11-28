@@ -1,13 +1,29 @@
 /**
  * LazaiTrader Telegram Bot - Cloudflare Worker
- * Main entry point with deposit command support
+ * Main entry point with deposit, withdrawal, and strategy features
  * 
  * Responsibilities:
  * - Handle all Telegram interactions
- * - Call lt_tg_deposit worker for blockchain operations
+ * - Route to specialized workers (deposit, withdrawal, balance)
+ * - Handle strategy management (config, read, delete)
  * - Display responses to users
  * - Handle all error messages and user guidance
  */
+
+// Import strategy handlers
+import {
+  handleConfig,
+  handleConfigPairSelected,
+  handleStrategyConfigInput,
+  handleViewConfig,
+  handleDeleteConfig,
+  handleDeleteStrategyConfirm
+} from './helper.strategyhandlers.js';
+
+import {
+  handleWithdraw,
+  handleWithdrawChain
+} from './helper.withdrawalhandlers.js';
 
 const TELEGRAM_API = 'https://api.telegram.org/bot';
 
@@ -42,7 +58,9 @@ export default {
     }
 
     try {
-      const update = await request.json();
+      // Clone request so body can be read
+      const clonedRequest = request.clone();
+      const update = await clonedRequest.json();
 
       // Handle both messages and callback queries
       if (update.message) {
@@ -167,13 +185,13 @@ async function handleMessage(message, env) {
       await handleWithdraw(chatId, userId, env);
       break;
     case 'config':
-      await handleConfig(chatId, env);
+      await handleConfig(chatId, userId, env);
       break;
     case 'myconfig':
-      await sendTodoMessage(chatId, env, 'My Config');
+      await handleViewConfig(chatId, userId, env);
       break;
     case 'deleteconfig':
-      await handleDeleteConfig(chatId, env);
+      await handleDeleteConfig(chatId, userId, env);
       break;
     case 'chart':
       await sendTodoMessage(chatId, env, 'Chart');
@@ -188,6 +206,15 @@ async function handleMessage(message, env) {
       await handleHelp(chatId, env);
       break;
     default:
+      // Check if this is a strategy configuration input (comma-separated numbers)
+      if (text.includes(',') && !text.startsWith('/')) {
+        const parts = text.split(',').map(p => parseFloat(p.trim()));
+        if (parts.length === 5 && parts.every(p => !isNaN(p))) {
+          // This looks like strategy config input
+          await handleStrategyConfigInput(chatId, userId, parts[0], parts[1], parts[2], parts[3], parts[4], env);
+          return;
+        }
+      }
       // Unknown command
       await sendMessage(chatId, env, {
         text: '❓ Unknown command. Use /help to see available commands.'
@@ -275,26 +302,283 @@ async function handleCallbackQuery(callbackQuery, env) {
   await answerCallbackQuery(callbackQuery.id, env);
 
   // Handle different callback actions
+
+  // Deposit flow
   if (data.startsWith('deposit_chain_')) {
     const chainId = parseInt(data.replace('deposit_chain_', ''));
     await handleDepositChain(chatId, userId, chainId, env);
-  } else if (data.startsWith('pair_')) {
-    await editMessage(chatId, messageId, env, {
-      text: '📊 *TODO: Pair Selection*\n\nThis feature will allow you to select trading pairs.',
-      parse_mode: 'Markdown'
+  }
+  // Strategy config: Step 1 - Pair selection
+  else if (data.startsWith('pair_')) {
+    const pairId = parseInt(data.replace('pair_', ''));
+    await handleConfigPairSelected(chatId, userId, pairId, env);
+  }
+  // Strategy config: Step 2 - Risk level
+  else if (data.startsWith('risk_')) {
+    const parts = data.replace('risk_', '').split('_');
+    const riskLevel = parts[0]; // 'low' or 'high'
+    const pairId = parseInt(parts[1]);
+    const { handleRiskSelection } = await import('./helper.strategyhandlers.js');
+    await handleRiskSelection(chatId, userId, pairId, riskLevel, env);
+  }
+  // Strategy config: Step 3 - Trade percentage confirmation
+  else if (data.startsWith('trade_')) {
+    const parts = data.split('_');
+    const action = parts[1]; // 'agree', 'less', 'more'
+    const pairId = parseInt(parts[2]);
+    let tradePercentage = parseFloat(parts[3]);
+
+    if (action === 'less') {
+      tradePercentage = Math.max(0.01, tradePercentage * 0.8);
+    } else if (action === 'more') {
+      tradePercentage = Math.min(1.0, tradePercentage * 1.2);
+    }
+
+    if (action !== 'agree') {
+      // Delete old message and send new one with updated value
+      try {
+        await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN || env.TELEGRAM_BOT_TOKEN}/deleteMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, message_id: messageId })
+        });
+      } catch (e) { console.error('Delete error:', e); }
+      
+      // Get pair info
+      const pair = await env.DB.prepare(
+        `SELECT c.ChainName, bt.Symbol AS BaseSymbol, qt.Symbol AS QuoteSymbol
+         FROM TradingPairs tp
+         INNER JOIN Chains c ON tp.ChainID = c.ChainID
+         INNER JOIN Tokens bt ON tp.BaseTokenID = bt.TokenID
+         INNER JOIN Tokens qt ON tp.QuoteTokenID = qt.TokenID
+         WHERE tp.PairID = ?`
+      ).bind(pairId).first();
+
+      const exampleBalance = 1000;
+      const exampleTrade = exampleBalance * tradePercentage;
+      const keyboard = {
+        inline_keyboard: [
+          [{ text: '✅ Confirm', callback_data: `trade_agree_${pairId}_${tradePercentage}` }],
+          [
+            { text: '📉 Less (-20%)', callback_data: `trade_less_${pairId}_${tradePercentage}` },
+            { text: '📈 More (+20%)', callback_data: `trade_more_${pairId}_${tradePercentage}` }
+          ]
+        ]
+      };
+
+      const message = `
+📊 *Trade Size Configuration*
+
+🔄 Pair: ${pair.ChainName} • ${pair.BaseSymbol}-${pair.QuoteSymbol}
+
+💹 *Current Trade Percentage: ${(tradePercentage * 100).toFixed(1)}%*
+
+📖 *What does this mean?*
+This is the percentage of your available balance that will be used for each automated trade.
+
+💡 *Example:*
+If you have \$${exampleBalance} available and set trade percentage to ${(tradePercentage * 100).toFixed(1)}%, each trade will use up to \$${exampleTrade.toFixed(2)}.
+
+⚠️ *Risk Level:*
+• Lower % = More conservative, smaller trades
+• Higher % = More aggressive, larger trades
+
+Click ✅ Confirm to continue, or adjust using the buttons below.`;
+
+      await sendMessage(chatId, env, {
+        text: message.trim(),
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
+      });
+    } else {
+      // action === 'agree', move to trigger percentage step
+      const { handleTradePercentage } = await import('./helper.strategyhandlers.js');
+      await handleTradePercentage(chatId, userId, pairId, tradePercentage, env);
+    }
+  }
+  // Strategy config: Step 4 - Trigger percentage confirmation
+  else if (data.startsWith('trigger_')) {
+    const parts = data.split('_');
+    const action = parts[1]; // 'agree', 'less', 'more'
+    const pairId = parseInt(parts[2]);
+    const tradePercentage = parseFloat(parts[3]);
+    let triggerPercentage = parseFloat(parts[4]);
+
+    if (action === 'less') {
+      triggerPercentage = Math.max(0.001, triggerPercentage * 0.8);
+    } else if (action === 'more') {
+      triggerPercentage = Math.min(0.3, triggerPercentage * 1.2);
+    }
+
+    if (action !== 'agree') {
+      // Delete old message and send new one with updated value
+      try {
+        await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN || env.TELEGRAM_BOT_TOKEN}/deleteMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, message_id: messageId })
+        });
+      } catch (e) { console.error('Delete error:', e); }
+
+      const examplePrice = 100;
+      const triggerPrice = examplePrice * (1 - triggerPercentage);
+
+      const keyboard = {
+        inline_keyboard: [
+          [{ text: '✅ Confirm', callback_data: `trigger_agree_${pairId}_${tradePercentage}_${triggerPercentage}` }],
+          [
+            { text: '📉 Less (-20%)', callback_data: `trigger_less_${pairId}_${tradePercentage}_${triggerPercentage}` },
+            { text: '📈 More (+20%)', callback_data: `trigger_more_${pairId}_${tradePercentage}_${triggerPercentage}` }
+          ]
+        ]
+      };
+
+      const message = `
+🎯 *Trigger Sensitivity Configuration*
+
+📊 *Current Trigger Percentage: ${(triggerPercentage * 100).toFixed(1)}%*
+
+📖 *What does this mean?*
+This is the price change threshold that will trigger an automated trade. When the asset's price changes by this percentage in either direction, a trade will be executed.
+
+💡 *Example:*
+If an asset costs \$${examplePrice} and drops by ${(triggerPercentage * 100).toFixed(1)}%, it will fall to \$${triggerPrice.toFixed(2)}.
+At this point, a BUY trade will be automatically executed.
+
+⚠️ *Sensitivity Levels:*
+• Lower % = Less sensitive, fewer trades triggered (1-3% = Conservative)
+• Higher % = More sensitive, more trades triggered (5-10% = Moderate)
+
+📌 *Recommended: 3-8% for most strategies*
+
+Click ✅ Confirm to continue, or adjust using the buttons below.`;
+
+      await sendMessage(chatId, env, {
+        text: message.trim(),
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
+      });
+    } else {
+      // action === 'agree', move to max amount step
+      const { handleTriggerPercentage } = await import('./helper.strategyhandlers.js');
+      await handleTriggerPercentage(chatId, userId, pairId, tradePercentage, triggerPercentage, env);
+    }
+  }
+  // Strategy config: Step 5 - Max amount confirmation
+  else if (data.startsWith('max_')) {
+    const parts = data.split('_');
+    const action = parts[1]; // 'agree', 'less', 'more'
+    const pairId = parseInt(parts[2]);
+    const tradePercentage = parseFloat(parts[3]);
+    const triggerPercentage = parseFloat(parts[4]);
+    let maxAmount = parseFloat(parts[5]);
+
+    if (action === 'less') {
+      maxAmount = Math.max(1.0, maxAmount * 0.8);
+    } else if (action === 'more') {
+      maxAmount = Math.min(1000.0, maxAmount * 1.2);
+    }
+
+    if (action !== 'agree') {
+      // Delete old message and send new one with updated value
+      try {
+        await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN || env.TELEGRAM_BOT_TOKEN}/deleteMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, message_id: messageId })
+        });
+      } catch (e) { console.error('Delete error:', e); }
+
+      const keyboard = {
+        inline_keyboard: [
+          [{ text: '✅ Confirm', callback_data: `max_agree_${pairId}_${tradePercentage}_${triggerPercentage}_${maxAmount}` }],
+          [
+            { text: '📉 Less (-20%)', callback_data: `max_less_${pairId}_${tradePercentage}_${triggerPercentage}_${maxAmount}` },
+            { text: '📈 More (+20%)', callback_data: `max_more_${pairId}_${tradePercentage}_${triggerPercentage}_${maxAmount}` }
+          ]
+        ]
+      };
+
+      const message = `
+💰 *Maximum Trade Amount Configuration*
+
+💵 *Current Maximum Amount: \$${maxAmount.toFixed(2)}*
+
+📖 *What does this mean?*
+This is a safety limit that prevents any single trade from exceeding a specific dollar amount, even if your trade percentage would suggest a larger trade.
+
+💡 *Example:*
+• Your trade percentage is ${(tradePercentage * 100).toFixed(1)}% of available funds
+• Your available balance is \$1,000
+• Without a limit, each trade could be \$${(1000 * tradePercentage).toFixed(2)}
+• But with a \$${maxAmount.toFixed(2)} max limit, trades will cap at \$${Math.min(1000 * tradePercentage, maxAmount).toFixed(2)}
+
+⚠️ *Why is this important?*
+Protects you from:
+• Accidentally using too much capital on a single trade
+• Over-leveraging when you have large balances
+• Unexpected market volatility
+
+📌 *Recommended: \$50-\$500 depending on your capital*
+
+Click ✅ Confirm to continue, or adjust using the buttons below.`;
+
+      await sendMessage(chatId, env, {
+        text: message.trim(),
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
+      });
+    } else {
+      // action === 'agree', move to summary step
+      const { handleMaxAmount } = await import('./helper.strategyhandlers.js');
+      await handleMaxAmount(chatId, userId, pairId, tradePercentage, triggerPercentage, maxAmount, env);
+    }
+  }
+  // Strategy config: Step 6 - Final confirmation
+  else if (data.startsWith('final_confirm_')) {
+    const parts = data.split('_');
+    const pairId = parseInt(parts[2]);
+    const tradePercentage = parseFloat(parts[3]);
+    const triggerPercentage = parseFloat(parts[4]);
+    const maxAmount = parseFloat(parts[5]);
+    const multiplier = 1.5; // Default multiplier
+
+    const { handleStrategyConfigInput } = await import('./helper.strategyhandlers.js');
+    await handleStrategyConfigInput(chatId, userId, pairId, tradePercentage, triggerPercentage, maxAmount, multiplier, env);
+  }
+  // Delete config: Select which one
+  else if (data.startsWith('del_') && data.split('_').length === 2) {
+    const configId = parseInt(data.replace('del_', ''));
+    const { handleDeleteStrategyConfirm } = await import('./helper.strategyhandlers.js');
+    await handleDeleteStrategyConfirm(chatId, userId, configId, env);
+  }
+  // Delete config: Confirm deletion
+  else if (data.startsWith('confirm_del_')) {
+    const configId = parseInt(data.replace('confirm_del_', ''));
+    try {
+      await env.DB.prepare(
+        'DELETE FROM UserTradingConfigs WHERE ConfigID = ? AND UserID = ?'
+      ).bind(configId, userId).run();
+      
+      await sendMessage(chatId, env, {
+        text: '✅ *Configuration Deleted*\n\nYour strategy has been removed.',
+        parse_mode: 'Markdown'
+      });
+    } catch (error) {
+      console.error('Error deleting config:', error);
+      await sendMessage(chatId, env, {
+        text: '❌ Error deleting configuration.'
+      });
+    }
+  }
+  // Delete config: Cancel deletion
+  else if (data.startsWith('cancel_del_')) {
+    await sendMessage(chatId, env, {
+      text: '👍 Deletion cancelled. Your configuration is safe.'
     });
-  } else if (data.includes('risk')) {
-    await editMessage(chatId, messageId, env, {
-      text: '⚖️ *TODO: Risk Level*\n\nThis feature will allow you to configure risk settings.',
-      parse_mode: 'Markdown'
-    });
-  } else if (data.startsWith('del_')) {
-    await editMessage(chatId, messageId, env, {
-      text: '🗑️ *TODO: Delete Config*\n\nThis feature will allow you to delete configurations.',
-      parse_mode: 'Markdown'
-    });
-  } else if (data.startsWith('withdraw_')) {
-    // Format: withdraw_chain_chainId
+  }
+  // Withdraw flow
+  else if (data.startsWith('withdraw_')) {
     const parts = data.replace('withdraw_', '').split('_');
     if (parts.length >= 2) {
       const chainId = parseInt(parts[1]);
@@ -371,6 +655,47 @@ async function handleDepositChain(chatId, userId, chainId, env) {
 
 /**
  * Call the deposit worker (blockchain backend)
+ */
+/**
+ * Generic worker caller for service bindings
+ */
+async function callWorker(env, workerName, action, chatId, userId, username, text) {
+  try {
+    const workerBinding = env[workerName];
+    if (!workerBinding) {
+      console.error(`Worker binding ${workerName} not found`);
+      return {
+        success: false,
+        error: `Worker ${workerName} not configured`
+      };
+    }
+
+    const response = await workerBinding.fetch('https://internal/handle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: action,
+        chatId: chatId,
+        userId: userId,
+        username: username,
+        text: text
+      })
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error(`Error calling ${workerName}:`, error);
+    return {
+      success: false,
+      error: error.message,
+      errorCode: 'WORKER_ERROR'
+    };
+  }
+}
+
+/**
+ * Call deposit worker for SCW deployment
  */
 async function callDepositWorker(userId, userWallet, chainId, rpcUrl, env) {
   try {
@@ -470,178 +795,30 @@ Use /help or contact: support@lazaitrader.com
   });
 }
 
+
 /**
- * Handle withdrawal chain selection - withdraw all tokens on selected chain
+ * Withdrawal logic imported from helper.withdrawalhandlers.js
  */
-async function handleWithdrawChain(chatId, userId, chainId, env) {
-  try {
-    console.log(`[handleWithdrawChain] User ${userId} initiating withdrawal from chain ${chainId}`);
-    
-    // Get user wallet and SCW
-    const user = await env.DB.prepare(
-      'SELECT UserWallet, SCWAddress FROM Users WHERE UserID = ?'
-    ).bind(userId).first();
 
-    if (!user || !user.SCWAddress) {
-      await sendMessage(chatId, env, {
-        text: '❌ No Smart Contract Wallet found.'
-      });
-      return;
-    }
-
-    // Get chain details including explorer URL
-    const chain = await env.DB.prepare(
-      'SELECT ChainName, RPCEndpoint, ExplorerURL FROM Chains WHERE ChainID = ?'
-    ).bind(chainId).first();
-
-    if (!chain) {
-      await sendMessage(chatId, env, {
-        text: '❌ Chain not found.'
-      });
-      return;
-    }
-
-    // Send processing message
-    await sendMessage(chatId, env, {
-      text: `⏳ *Processing Withdrawal*\n\n🔗 Chain: ${chain.ChainName}\n\nFetching balances and executing withdrawals...`,
-      parse_mode: 'Markdown'
-    });
-
-    // Get current balances from blockchain
-    const balanceResult = await callBalanceWorker(userId, user.SCWAddress, env);
-
-    if (!balanceResult.success) {
-      await sendMessage(chatId, env, {
-        text: `❌ *Could not fetch balances*\n\n${balanceResult.error}`
-      });
-      return;
-    }
-
-    // Extract tokens for this chain with non-zero balance
-    const chainBalance = balanceResult.balances[chainId];
-    if (!chainBalance) {
-      await sendMessage(chatId, env, {
-        text: `❌ No tokens found on this chain.`
-      });
-      return;
-    }
-
-    const tokensToWithdraw = chainBalance.tokens.filter(t => t.balance !== '0' && parseFloat(t.balanceFormatted) > 0);
-    
-    if (tokensToWithdraw.length === 0) {
-      await sendMessage(chatId, env, {
-        text: `❌ No tokens with balance on ${chain.ChainName}.`
-      });
-      return;
-    }
-
-    console.log(`[handleWithdrawChain] Found ${tokensToWithdraw.length} tokens to withdraw on chain ${chainId}`);
-
-    // Withdraw all tokens on this chain via single withdrawal worker call
-    const withdrawalResult = await callWithdrawalWorker(
-      userId,
-      user.UserWallet,
-      user.SCWAddress,
-      chainId,
-      chain.RPCEndpoint,
-      env
-    );
-
-    if (!withdrawalResult.success) {
-      await sendMessage(chatId, env, {
-        text: `❌ *Withdrawal Failed*\n\n${withdrawalResult.error}\n\n📧 *Contact Support:*\n• @LazaiTraderDev\n• support@lazaitrader.com`,
-        parse_mode: 'Markdown'
-      });
-      return;
-    }
-
-    // Build transaction link
-    const transactionLink = buildTransactionLink(chain.ExplorerURL, withdrawalResult.txHash);
-
-    // Build success message with transaction link
-    let responseText = `✅ *Withdrawal Complete*\n\n`;
-    responseText += `🔗 *Chain:* ${chain.ChainName}\n`;
-    responseText += `📍 *To:* \`${user.UserWallet}\`\n\n`;
-    responseText += `💸 *Withdrawn Tokens:*\n`;
-    
-    tokensToWithdraw.forEach(token => {
-      responseText += `• ${token.symbol}: ${token.balanceFormatted}\n`;
-    });
-
-    responseText += `\n🔗 *Transaction:*\n`;
-    responseText += `[View on Explorer](${transactionLink})\n`;
-    responseText += `\`${withdrawalResult.txHash}\`\n`;
-    responseText += `\nYour funds will arrive shortly.`;
-
-    await sendMessage(chatId, env, {
-      text: responseText,
-      parse_mode: 'Markdown'
-    });
-
-  } catch (error) {
-    console.error('Error in handleWithdrawChain:', error);
-    await sendMessage(chatId, env, {
-      text: '❌ An error occurred. Please try again later.'
-    });
-  }
+/**
+ * Handle /help command
+ */
+async function handleHelp(chatId, env) {
+  const commandList = COMMANDS.map(cmd => `/${cmd.command} - ${cmd.description}`).join('\n');
+  await sendMessage(chatId, env, {
+    text: `❓ *Available Commands:*\n\n${commandList}\n\n💡 *Tip:* Use the inline menu buttons for quick access!`,
+    parse_mode: 'Markdown'
+  });
 }
 
 /**
- * Call the withdrawal worker (blockchain backend)
+ * Send a generic TODO message
  */
-async function callWithdrawalWorker(userId, userWallet, scwAddress, chainId, rpcUrl, env) {
-  try {
-    const response = await env.WITHDRAWAL_WORKER.fetch('https://internal/withdraw', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: userId,
-        userWallet: userWallet,
-        scwAddress: scwAddress,
-        chainId: chainId,
-        rpcUrl: rpcUrl
-      })
-    });
-
-    const result = await response.json();
-    return result;
-  } catch (error) {
-    console.error('Error calling withdrawal worker:', error);
-    return {
-      success: false,
-      error: error.message,
-      errorCode: 'WORKER_ERROR'
-    };
-  }
-}
-
-/**
- * Build transaction explorer link
- * @param explorerURL Base explorer URL from database
- * @param txHash Transaction hash
- * @returns Full transaction link
- */
-function buildTransactionLink(explorerURL, txHash) {
-  if (!explorerURL) {
-    return `https://etherscan.io/tx/${txHash}`;
-  }
-
-  // Ensure explorerURL doesn't have trailing slash
-  const baseURL = explorerURL.replace(/\/$/, '');
-
-  // Support different explorer URL formats
-  if (baseURL.includes('etherscan')) {
-    return `${baseURL}/tx/${txHash}`;
-  } else if (baseURL.includes('explorer')) {
-    // Generic explorer (works for most EVM chains)
-    return `${baseURL}/tx/${txHash}`;
-  } else if (baseURL.includes('scan')) {
-    // Scan-based explorers
-    return `${baseURL}/tx/${txHash}`;
-  } else {
-    // Fallback
-    return `${baseURL}/tx/${txHash}`;
-  }
+async function sendTodoMessage(chatId, env, feature) {
+  await sendMessage(chatId, env, {
+    text: `✅ *TODO: ${feature}*\n\nThis feature is not yet implemented.`,
+    parse_mode: 'Markdown'
+  });
 }
 
 /**
@@ -700,7 +877,7 @@ async function handleBalance(chatId, userId, env) {
 /**
  * Call the balance worker
  */
-async function callBalanceWorker(userId, scwAddress, env) {
+export async function callBalanceWorker(userId, scwAddress, env) {
   try {
     const response = await env.BALANCE_WORKER.fetch('https://internal/balance', {
       method: 'POST',
@@ -782,271 +959,83 @@ async function displayBalances(chatId, balances, scwAddress, env) {
 }
 
 /**
- * Handle /withdraw command - initiate withdrawal flow
+ * Withdrawal handlers imported from helper.withdrawalhandlers.js
  */
-async function handleWithdraw(chatId, userId, env) {
-  try {
-    console.log(`[handleWithdraw] User ${userId} requested withdrawal`);
-    
-    // Check if user is registered and has SCW
-    const user = await env.DB.prepare(
-      'SELECT UserID, UserWallet, SCWAddress FROM Users WHERE UserID = ?'
-    ).bind(userId).first();
-
-    if (!user) {
-      await sendMessage(chatId, env, {
-        text: '❌ You are not registered yet. Please use /start to register first.'
-      });
-      return;
-    }
-
-    if (!user.SCWAddress) {
-      await sendMessage(chatId, env, {
-        text: '❌ No Smart Contract Wallet found. Please use /deposit to create one first.'
-      });
-      return;
-    }
-
-    // Send loading message
-    await sendMessage(chatId, env, {
-      text: `⏳ *Fetching your balances...*\n\nQuerying blockchain networks...`,
-      parse_mode: 'Markdown'
-    });
-
-    // Call balance worker to get current balances
-    const balanceResult = await callBalanceWorker(userId, user.SCWAddress, env);
-
-    if (!balanceResult.success) {
-      await sendMessage(chatId, env, {
-        text: `❌ *Error fetching balances*\n\n${balanceResult.error}`
-      });
-      return;
-    }
-
-    // Find chains with available balances
-    const chainsWithBalance = {};
-    const chainIds = Object.keys(balanceResult.balances).sort((a, b) => parseInt(a) - parseInt(b));
-
-    for (const chainId of chainIds) {
-      const chain = balanceResult.balances[chainId];
-      const tokensWithBalance = chain.tokens.filter(t => parseFloat(t.balanceFormatted) > 0);
-      
-      if (tokensWithBalance.length > 0) {
-        // Build token summary
-        const tokenSummary = tokensWithBalance.map(t => `${t.symbol}: ${t.balanceFormatted}`).join('\n');
-        
-        chainsWithBalance[chainId] = {
-          chainName: chain.chainName,
-          tokens: tokensWithBalance,
-          tokenSummary: tokenSummary
-        };
-      }
-    }
-
-    if (Object.keys(chainsWithBalance).length === 0) {
-      await sendMessage(chatId, env, {
-        text: '💰 You have no tokens to withdraw.\n\nYour Smart Contract Wallet is empty.'
-      });
-      return;
-    }
-
-    // Build chain selection menu with token summaries
-    let menuText = `💸 *Select a blockchain network to withdraw from:*\n\nAll tokens on the selected chain will be withdrawn to your wallet:\n\n`;
-    
-    for (const [chainId, chainData] of Object.entries(chainsWithBalance)) {
-      menuText += `🔗 *${chainData.chainName}*\n${chainData.tokenSummary}\n\n`;
-    }
-
-    const keyboard = {
-      inline_keyboard: Object.entries(chainsWithBalance).map(([chainId, chain]) => [
-        {
-          text: `💳 ${chain.chainName}`,
-          callback_data: `withdraw_chain_${chainId}`
-        }
-      ])
-    };
-
-    await sendMessage(chatId, env, {
-      text: menuText,
-      parse_mode: 'Markdown',
-      reply_markup: keyboard
-    });
-  } catch (error) {
-    console.error('Error in handleWithdraw:', error);
-    await sendMessage(chatId, env, {
-      text: '❌ An error occurred. Please try again later.'
-    });
-  }
-}
 
 /**
- * Handle /config command - show trading pair options
+ * Helper Functions
  */
-async function handleConfig(chatId, env) {
-  const keyboard = {
-    inline_keyboard: [
-      [{ text: '🟢 tgMetis-tgUSDC', callback_data: 'pair_tgmetis_tgusdc' }],
-      [{ text: '🟢 tgETH-tgUSDC', callback_data: 'pair_tgeth_tgusdc' }],
-      [{ text: '🔒 Metis-USDC', callback_data: 'pair_metis_usdc' }],
-      [{ text: '🔒 ETH-USDC', callback_data: 'pair_eth_usdc' }]
-    ]
-  };
-
-  await sendMessage(chatId, env, {
-    text: `⚙️ *Let's Set Up Your Trading Strategy!*
-
-First, choose which crypto pair you want to trade.
-
-*Available on Testnet:*
-🟢 = Active and ready
-🔒 = Coming soon
-
-Select a trading pair:`,
-    parse_mode: 'Markdown',
-    reply_markup: keyboard
-  });
-}
 
 /**
- * Handle /deleteconfig command
+ * Send message to Telegram chat
  */
-async function handleDeleteConfig(chatId, env) {
-  const keyboard = {
-    inline_keyboard: [
-      [{ text: 'Delete tgMetis-tgUSDC', callback_data: 'del_tgMetis_tgUSDC' }],
-      [{ text: 'Delete tgETH-tgUSDC', callback_data: 'del_tgETH_tgUSDC' }]
-    ]
-  };
-
-  await sendMessage(chatId, env, {
-    text: '🗑️ *Select Configuration to Delete*',
-    parse_mode: 'Markdown',
-    reply_markup: keyboard
-  });
-}
-
-/**
- * Handle /help command
- */
-async function handleHelp(chatId, env) {
-  const commandList = COMMANDS.map(cmd => `/${cmd.command} - ${cmd.description}`).join('\n');
-
-  await sendMessage(chatId, env, {
-    text: `❓ *Available Commands:*\n\n${commandList}\n\n💡 *Tip:* Use the inline menu buttons for quick access!`,
-    parse_mode: 'Markdown'
-  });
-}
-
-/**
- * Send a generic TODO message
- */
-async function sendTodoMessage(chatId, env, feature) {
-  await sendMessage(chatId, env, {
-    text: `✅ *TODO: ${feature}*\n\nThis feature is not yet implemented.`,
-    parse_mode: 'Markdown'
-  });
-}
-
-/**
- * Send a message to Telegram
- */
-async function sendMessage(chatId, env, options) {
-  try {
-    const botToken = env.BOT_TOKEN;
-    
-    if (!botToken) {
-      console.error('BOT_TOKEN not found in environment');
-      throw new Error('BOT_TOKEN is not configured');
-    }
-    
-    const url = `${TELEGRAM_API}${botToken}/sendMessage`;
-
-    const payload = {
-      chat_id: chatId,
-      ...options
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    const result = await response.json();
-    
-    if (!result.ok) {
-      console.error('Telegram API error:', result.description || result.error);
-    }
-    
-    return result;
-  } catch (error) {
-    console.error('Error in sendMessage:', error.message);
-    throw error;
-  }
-}
-
-/**
- * Edit an existing message
- */
-async function editMessage(chatId, messageId, env, options) {
-  const botToken = env.BOT_TOKEN;
-  const url = `${TELEGRAM_API}${botToken}/editMessageText`;
-
-  const payload = {
+export async function sendMessage(chatId, env, options) {
+  const token = env.TELEGRAM_BOT_TOKEN || env.BOT_TOKEN;
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
+  
+  const body = {
     chat_id: chatId,
-    message_id: messageId,
     ...options
   };
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
 
-  return await response.json();
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Telegram error: ${response.status}`, errorText);
+      return { ok: false, error: errorText };
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error sending message:', error);
+    throw error;
+  }
 }
 
 /**
- * Answer a callback query
+ * Answer callback query to remove loading state
  */
 async function answerCallbackQuery(callbackQueryId, env) {
-  const botToken = env.BOT_TOKEN;
-  const url = `${TELEGRAM_API}${botToken}/answerCallbackQuery`;
-
-  const payload = {
-    callback_query_id: callbackQueryId
-  };
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-
-  return await response.json();
-}
-
-/**
- * Call another worker via service binding
- */
-async function callWorker(env, workerBinding, action, chatId, userId, username, text) {
   try {
-    const response = await env[workerBinding].fetch('https://internal/action', {
+    const token = env.TELEGRAM_BOT_TOKEN || env.BOT_TOKEN;
+    const url = `https://api.telegram.org/bot${token}/answerCallbackQuery`;
+    await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: action,
-        chatId: chatId,
-        userId: userId,
-        username: username,
-        text: text
+        callback_query_id: callbackQueryId
       })
     });
-
-    return await response.json();
   } catch (error) {
-    console.error(`Error calling ${workerBinding}:`, error);
-    throw error;
+    console.error('Error answering callback query:', error);
+  }
+}
+
+/**
+ * Edit message text
+ */
+async function editMessage(chatId, messageId, env, options) {
+  try {
+    const token = env.TELEGRAM_BOT_TOKEN || env.BOT_TOKEN;
+    const url = `https://api.telegram.org/bot${token}/editMessageText`;
+    const body = {
+      chat_id: chatId,
+      message_id: messageId,
+      ...options
+    };
+
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  } catch (error) {
+    console.error('Error editing message:', error);
   }
 }

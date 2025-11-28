@@ -1,45 +1,14 @@
 /**
  * LazaiTrader Balance Worker - Cloudflare Worker
  * Fetches Smart Contract Wallet balances from blockchain
+ * Saves to UserBalances table for reference
  * 
- * Responsibilities:
- * - Fetch token balances from SCW
- * - Group balances by blockchain chain
- * - Return formatted balance data
- * - NO Telegram interaction
- * 
- * Input format:
- * {
- *   userId: number,
- *   scwAddress: string (0x... Smart Contract Wallet)
- * }
- * 
- * Output format:
- * {
- *   success: boolean,
- *   balances?: {
- *     [chainId]: {
- *       chainName: string,
- *       chainId: number,
- *       tokens: [
- *         {
- *           symbol: string,
- *           tokenAddress: string,
- *           balance: string (in wei),
- *           balanceFormatted: string (human readable),
- *           decimals: number
- *         }
- *       ]
- *     }
- *   },
- *   error?: string,
- *   errorCode?: string
- * }
+ * Input: { userId, scwAddress }
+ * Output: { success, balances, error }
  */
 
 import { ethers } from 'ethers';
 
-// ERC20 Token ABI
 const ERC20_ABI = [
   {
     inputs: [{ name: 'account', type: 'address' }],
@@ -74,9 +43,8 @@ export default {
       const payload = await request.json();
       let { userId, scwAddress } = payload;
 
-      // Validate input
       if (!userId || !scwAddress) {
-        console.log('[balance] Missing required parameters:', { userId, scwAddress });
+        console.log('[balance] Missing parameters');
         return jsonResponse({
           success: false,
           error: 'Missing required parameters',
@@ -85,16 +53,15 @@ export default {
       }
 
       userId = parseInt(userId);
+      console.log(`[balance] Fetching balances for user ${userId}, SCW: ${scwAddress}`);
 
-      console.log(`[balance] Fetching balances for userId: ${userId}, SCW: ${scwAddress}`);
-
-      // Get all active chains and their tokens from database
+      // Get all active chains
       const chains = await env.DB.prepare(
         'SELECT ChainID, ChainName, RPCEndpoint FROM Chains WHERE IsActive = 1 ORDER BY ChainID'
       ).all();
 
       if (!chains.results || chains.results.length === 0) {
-        console.log('[balance] No active chains found');
+        console.log('[balance] No active chains');
         return jsonResponse({
           success: false,
           error: 'No active chains configured',
@@ -102,11 +69,10 @@ export default {
         }, 500);
       }
 
-      // Fetch tokens for each chain
       const balances = {};
 
       for (const chain of chains.results) {
-        console.log(`[balance] Processing chain: ${chain.ChainName} (${chain.ChainID})`);
+        console.log(`[balance] Chain: ${chain.ChainName}`);
 
         // Get tokens for this chain
         const tokens = await env.DB.prepare(
@@ -114,18 +80,16 @@ export default {
         ).bind(chain.ChainID).all();
 
         if (!tokens.results || tokens.results.length === 0) {
-          console.log(`[balance] No tokens found for chain ${chain.ChainID}`);
+          console.log(`[balance] No tokens for chain ${chain.ChainID}`);
           continue;
         }
 
-        // Initialize chain balances
         balances[chain.ChainID] = {
           chainName: chain.ChainName,
           chainId: chain.ChainID,
           tokens: []
         };
 
-        // Fetch balance for each token
         const provider = new ethers.JsonRpcProvider(chain.RPCEndpoint);
 
         for (const token of tokens.results) {
@@ -136,13 +100,10 @@ export default {
               provider
             );
 
-            // Get balance
             const balance = await tokenContract.balanceOf(scwAddress);
-            
-            // Format balance
             const balanceFormatted = ethers.formatUnits(balance, token.Decimals);
 
-            console.log(`[balance] ${token.Symbol}: ${balance.toString()} (${balanceFormatted})`);
+            console.log(`[balance] ${token.Symbol}: ${balanceFormatted}`);
 
             balances[chain.ChainID].tokens.push({
               symbol: token.Symbol,
@@ -153,23 +114,33 @@ export default {
               tokenId: token.TokenID
             });
 
+            // Save to UserBalances table
+            try {
+              await env.DB.prepare(
+                `INSERT INTO UserBalances (UserID, TokenID, Balance) 
+                 VALUES (?, ?, ?)
+                 ON CONFLICT(UserID, TokenID) DO UPDATE SET Balance = ?`
+              ).bind(userId, token.TokenID, parseFloat(balanceFormatted), parseFloat(balanceFormatted)).run();
+            } catch (dbError) {
+              console.error(`[balance] DB error for ${token.Symbol}:`, dbError.message);
+            }
+
           } catch (tokenError) {
-            console.error(`[balance] Error fetching ${token.Symbol} balance:`, tokenError.message);
-            // Continue with other tokens
+            console.error(`[balance] Error fetching ${token.Symbol}:`, tokenError.message);
             balances[chain.ChainID].tokens.push({
               symbol: token.Symbol,
               tokenAddress: token.TokenAddress,
               balance: '0',
               balanceFormatted: '0',
               decimals: token.Decimals,
-              error: 'Could not fetch balance',
+              error: 'Could not fetch',
               tokenId: token.TokenID
             });
           }
         }
       }
 
-      console.log('[balance] ✅ Balance fetch complete');
+      console.log('[balance] ✅ Complete');
 
       return jsonResponse({
         success: true,
@@ -188,9 +159,6 @@ export default {
   }
 };
 
-/**
- * Helper: Return JSON response
- */
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,

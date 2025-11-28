@@ -1,3 +1,18 @@
+-- Temporary table for storing user's pending strategy pair selection
+CREATE TABLE IF NOT EXISTS UserStrategyPending (
+    PendingID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER NOT NULL,
+    PairID INTEGER NOT NULL,
+    CreatedAt TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID),
+    FOREIGN KEY (PairID) REFERENCES TradingPairs(PairID),
+    UNIQUE(UserID, PairID)
+);
+
+CREATE INDEX IF NOT EXISTS IX_UserStrategyPending_User ON UserStrategyPending(UserID);
+
+
+
 -- =============================================
 -- SCW Deployment Tracking Table
 -- =============================================
