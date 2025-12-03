@@ -816,7 +816,7 @@ async function handleHelp(chatId, env) {
  */
 async function sendTodoMessage(chatId, env, feature) {
   await sendMessage(chatId, env, {
-    text: `✅ *TODO: ${feature}*\n\nThis feature is not yet implemented.`,
+    text: `✅ *TODO: ${feature}*\n\nThis feature is currently not available. Please check back later!`,
     parse_mode: 'Markdown'
   });
 }

@@ -1,0 +1,96 @@
+# ============================================
+# LazaiTrader Trading Queue Worker (Producer)
+# ============================================
+name = "lt-trading-queue"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Account configuration (update with your account ID)
+# account_id = "your-account-id"
+
+# ============================================
+# D1 Database Binding
+# ============================================
+[[d1_databases]]
+binding = "DB"
+database_name = "lazaitrader"
+database_id = "64791295-2134-4306-a6e9-4a45619aab05"
+
+# ============================================
+# Cloudflare Queue Producer Binding
+# ============================================
+[[queues.producers]]
+queue = "lt-trading-queue"
+binding = "TRADING_QUEUE"
+# Queue ID: b4285afe15d5427dad2f1831857c0b52
+
+# ============================================
+# Scheduled Triggers (Cron)
+# ============================================
+# Runs every 1 hour - to run every minute set it to crons = ["* * * * *"]
+[triggers]
+crons = ["*/5 * * * *"]
+
+# ============================================
+# Environment Variables
+# ============================================
+[vars]
+ENVIRONMENT = "production"
+
+# ============================================
+# Secrets (set via wrangler secret put)
+# ============================================
+# Run these commands to set secrets:
+#   wrangler secret put BOT_TOKEN
+#   wrangler secret put WORKER_SECRET
+#
+# BOT_TOKEN = "..." (private key for SCW transactions - used by consumer)
+# WORKER_SECRET = "..." (for manual trigger auth)
+
+# ============================================
+# Development Configuration
+# ============================================
+[env.dev]
+name = "lt-trading-queue-dev"
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "lazaitrader"
+database_id = "64791295-2134-4306-a6e9-4a45619aab05"
+
+[[env.dev.queues.producers]]
+queue = "lt-trading-queue-dev"
+binding = "TRADING_QUEUE"
+
+[env.dev.triggers]
+crons = ["0 0 * * *"]  # Every 5 minutes in dev
+
+# ============================================
+# Staging Configuration
+# ============================================
+[env.staging]
+name = "lt-trading-queue-staging"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "lazaitrader"
+database_id = "64791295-2134-4306-a6e9-4a45619aab05"
+
+[[env.staging.queues.producers]]
+queue = "lt-trading-queue-staging"
+binding = "TRADING_QUEUE"
+
+[env.staging.triggers]
+crons = ["0 0 * * *"]  # Every 5 minutes in staging
+
+# ============================================
+# Observability
+# ============================================
+[observability]
+enabled = true

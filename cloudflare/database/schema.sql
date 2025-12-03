@@ -1,3 +1,71 @@
+-- ============================================
+-- LazaiTrader Trading Queue - Additional Tables
+-- ============================================
+-- NOTE: Trade queuing is handled by Cloudflare Queue (lt-trading-queue)
+-- This file only contains tables for price fetching and caching
+
+-- TABLE: PRICE API ENDPOINTS
+-- Stores multiple API sources per base pair for fallback
+-- Note: This is pair-agnostic for chains (ETH-USDC uses same API regardless of chain)
+CREATE TABLE IF NOT EXISTS PriceAPIEndpoints (
+    EndpointID INTEGER PRIMARY KEY AUTOINCREMENT,
+    BasePairSymbol TEXT NOT NULL,          -- e.g., 'ETH-USDC', 'BTC-ETH'
+    Provider TEXT NOT NULL,                 -- 'binance', 'dexscreener', 'coingecko', 'coinbase'
+    EndpointURL TEXT NOT NULL,              -- Full API URL with placeholders
+    ApiKeyEnvVar TEXT,                      -- Environment variable name for API key if needed
+    Priority INTEGER DEFAULT 1,             -- Lower = higher priority (try first)
+    IsActive INTEGER DEFAULT 1,
+    LastSuccessAt TEXT,
+    LastFailureAt TEXT,
+    ConsecutiveFailures INTEGER DEFAULT 0,
+    CreatedAt TEXT DEFAULT (datetime('now')),
+    UpdatedAt TEXT DEFAULT (datetime('now')),
+    UNIQUE(BasePairSymbol, Provider)
+);
+
+-- Index for efficient lookups by base pair
+CREATE INDEX IF NOT EXISTS IX_PriceAPIEndpoints_BasePair_Priority 
+ON PriceAPIEndpoints(BasePairSymbol, Priority, IsActive);
+
+-- TABLE: CACHED PRICES
+-- Stores the most recent fetched price per base pair symbol
+CREATE TABLE IF NOT EXISTS CachedPrices (
+    CacheID INTEGER PRIMARY KEY AUTOINCREMENT,
+    BasePairSymbol TEXT NOT NULL UNIQUE,    -- e.g., 'ETH-USDC'
+    Price REAL NOT NULL,
+    Provider TEXT NOT NULL,                  -- Which API provided this price
+    FetchedAt TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS IX_CachedPrices_FetchedAt ON CachedPrices(FetchedAt);
+
+-- ============================================
+-- SAMPLE DATA: Price API Endpoints
+-- ============================================
+
+-- ETH-USDC (common pair, multiple providers)
+INSERT OR IGNORE INTO PriceAPIEndpoints (BasePairSymbol, Provider, EndpointURL, Priority) VALUES
+('ETH-USDC', 'binance', 'https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDC', 1),
+('ETH-USDC', 'coinbase', 'https://api.coinbase.com/v2/prices/ETH-USDC/spot', 2),
+('ETH-USDC', 'coingecko', 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd', 3);
+
+-- BTC-USDC
+INSERT OR IGNORE INTO PriceAPIEndpoints (BasePairSymbol, Provider, EndpointURL, Priority) VALUES
+('BTC-USDC', 'binance', 'https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDC', 1),
+('BTC-USDC', 'coinbase', 'https://api.coinbase.com/v2/prices/BTC-USDC/spot', 2),
+('BTC-USDC', 'coingecko', 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd', 3);
+
+-- METIS-USDC (might need DEX-specific APIs)
+INSERT OR IGNORE INTO PriceAPIEndpoints (BasePairSymbol, Provider, EndpointURL, Priority) VALUES
+('METIS-USDC', 'coingecko', 'https://api.coingecko.com/api/v3/simple/price?ids=metis-token&vs_currencies=usd', 1),
+('METIS-USDC', 'dexscreener', 'https://api.dexscreener.com/latest/dex/tokens/0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000', 2);
+
+-- ETH-BTC (crypto-to-crypto pair)
+INSERT OR IGNORE INTO PriceAPIEndpoints (BasePairSymbol, Provider, EndpointURL, Priority) VALUES
+('ETH-BTC', 'binance', 'https://api.binance.com/api/v3/ticker/price?symbol=ETHBTC', 1),
+('ETH-BTC', 'coinbase', 'https://api.coinbase.com/v2/prices/ETH-BTC/spot', 2);
+
+
 -- =============================================
 -- LazaiTrader Database Schema - Complete Reference
 -- =============================================

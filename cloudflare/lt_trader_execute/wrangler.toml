@@ -1,0 +1,93 @@
+# ============================================
+# LazaiTrader Trading Execution Worker (Consumer)
+# ============================================
+name = "lt-trading-execution"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Required for ethers.js
+node_compat = true
+
+# ============================================
+# D1 Database Binding
+# ============================================
+[[d1_databases]]
+binding = "DB"
+database_name = "lazaitrader"
+database_id = "64791295-2134-4306-a6e9-4a45619aab05"
+
+# ============================================
+# Cloudflare Queue Consumer Binding
+# ============================================
+[[queues.consumers]]
+queue = "lt-trading-queue"
+# Queue ID: b4285afe15d5427dad2f1831857c0b52
+max_batch_size = 1          # Process one message at a time
+max_batch_timeout = 5       # Wait max 5 seconds for messages
+max_retries = 3             # Retry failed messages up to 3 times
+dead_letter_queue = "lt-trading-dlq"  # Optional: dead letter queue for failed messages
+
+# ============================================
+# Environment Variables
+# ============================================
+[vars]
+ENVIRONMENT = "production"
+
+# ============================================
+# Secrets (set via wrangler secret put)
+# ============================================
+# Run these commands to set secrets:
+#   wrangler secret put BOT_PRIVATE_KEY
+#   wrangler secret put TELEGRAM_BOT_TOKEN
+#
+# BOT_PRIVATE_KEY = "..." (private key for bot wallet - used for:
+#                          1. Updating DEX oracle prices (setPrices)
+#                          2. Executing trades on SCWs (executeTrade)
+#                          Must be the oracle owner AND whitelisted bot for SCWs)
+# TELEGRAM_BOT_TOKEN = "..." (Telegram bot token for notifications)
+
+# ============================================
+# Development Configuration
+# ============================================
+[env.dev]
+name = "lt-trading-execution-dev"
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "lazaitrader"
+database_id = "64791295-2134-4306-a6e9-4a45619aab05"
+
+[[env.dev.queues.consumers]]
+queue = "lt-trading-queue-dev"
+max_batch_size = 1
+max_batch_timeout = 5
+max_retries = 3
+
+# ============================================
+# Staging Configuration
+# ============================================
+[env.staging]
+name = "lt-trading-execution-staging"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "lazaitrader"
+database_id = "64791295-2134-4306-a6e9-4a45619aab05"
+
+[[env.staging.queues.consumers]]
+queue = "lt-trading-queue-staging"
+max_batch_size = 1
+max_batch_timeout = 5
+max_retries = 3
+
+# ============================================
+# Observability
+# ============================================
+[observability]
+enabled = true
