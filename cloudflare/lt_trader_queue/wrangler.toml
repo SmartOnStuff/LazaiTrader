@@ -29,7 +29,11 @@ binding = "TRADING_QUEUE"
 # ============================================
 # Runs every 1 hour - to run every minute set it to crons = ["* * * * *"]
 [triggers]
-crons = ["*/5 * * * *"]
+# every 5 min
+# crons = ["*/5 * * * *"]
+# once an hour
+crons = ["*/2 * * * *"]
+
 
 # ============================================
 # Environment Variables

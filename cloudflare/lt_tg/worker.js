@@ -30,9 +30,8 @@ const TELEGRAM_API = 'https://api.telegram.org/bot';
 // Bot commands configuration
 const COMMANDS = [
   { command: 'start', description: '🚀 Register with LazaiTrader' },
-  { command: 'wallet', description: '📋 Show wallet addresses' },
   { command: 'balance', description: '💰 Check balances' },
-  { command: 'deposit', description: '📥 Deposit to Smart Wallet' },
+  { command: 'deposit', description: '📥 View deposit address' },
   { command: 'withdraw', description: '💸 Withdraw funds' },
   { command: 'config', description: '⚙️ Configure strategy' },
   { command: 'myconfig', description: '📊 View strategies' },
@@ -175,9 +174,6 @@ async function handleMessage(message, env) {
     case 'deposit':
       await handleDeposit(chatId, userId, env);
       break;
-    case 'wallet':
-      await sendTodoMessage(chatId, env, 'Wallet');
-      break;
     case 'balance':
       await handleBalance(chatId, userId, env);
       break;
@@ -194,13 +190,13 @@ async function handleMessage(message, env) {
       await handleDeleteConfig(chatId, userId, env);
       break;
     case 'chart':
-      await sendTodoMessage(chatId, env, 'Chart');
+      await handleChart(chatId, userId, env);
       break;
     case 'contribute':
       await sendTodoMessage(chatId, env, 'Contribute');
       break;
     case 'suggestion':
-      await sendTodoMessage(chatId, env, 'Suggestion');
+      await handleSuggestion(chatId, userId, env);
       break;
     case 'help':
       await handleHelp(chatId, env);
@@ -223,15 +219,15 @@ async function handleMessage(message, env) {
 }
 
 /**
- * Handle /deposit command - initiate deposit flow
+ * Handle /deposit command - show deposit address
  */
 async function handleDeposit(chatId, userId, env) {
   try {
     console.log(`[handleDeposit] User ${userId} requested deposit`);
-    
+
     // Check if user is registered and has a wallet
     const user = await env.DB.prepare(
-      'SELECT UserID, UserWallet FROM Users WHERE UserID = ?'
+      'SELECT UserID, UserWallet, SCWAddress FROM Users WHERE UserID = ?'
     ).bind(userId).first();
 
     if (!user) {
@@ -250,37 +246,18 @@ async function handleDeposit(chatId, userId, env) {
       return;
     }
 
-    console.log(`[handleDeposit] User ${userId} wallet: ${user.UserWallet}`);
-
-    // Get active chains with RPC endpoints
-    const chains = await env.DB.prepare(
-      'SELECT ChainID, ChainName, RPCEndpoint FROM Chains WHERE IsActive = 1 ORDER BY ChainID'
-    ).all();
-
-    console.log(`[handleDeposit] Found ${chains.results?.length || 0} chains`);
-
-    if (!chains.results || chains.results.length === 0) {
-      console.log(`[handleDeposit] No active chains found`);
+    if (!user.SCWAddress) {
+      console.log(`[handleDeposit] User ${userId} has no SCW - registration incomplete`);
       await sendMessage(chatId, env, {
-        text: '❌ No active chains available at the moment.'
+        text: '❌ Your Smart Contract Wallet setup is incomplete.\n\nPlease contact support: @LazaiTraderDev'
       });
       return;
     }
 
-    // Build keyboard with active chains
-    const keyboard = {
-      inline_keyboard: chains.results.map(chain => [
-        { text: `🔗 ${chain.ChainName}`, callback_data: `deposit_chain_${chain.ChainID}` }
-      ])
-    };
+    // Display deposit address
+    console.log(`[handleDeposit] User ${userId} SCW: ${user.SCWAddress}`);
+    await displayDepositAddress(chatId, user.UserWallet, user.SCWAddress, env);
 
-    console.log(`[handleDeposit] Sending chain menu to user ${userId}`);
-
-    await sendMessage(chatId, env, {
-      text: `📥 *Select a chain to deposit to:*\n\nChoose which blockchain network you want to use for your Smart Contract Wallet:`,
-      parse_mode: 'Markdown',
-      reply_markup: keyboard
-    });
   } catch (error) {
     console.error('Error in handleDeposit:', error);
     await sendMessage(chatId, env, {
@@ -303,13 +280,8 @@ async function handleCallbackQuery(callbackQuery, env) {
 
   // Handle different callback actions
 
-  // Deposit flow
-  if (data.startsWith('deposit_chain_')) {
-    const chainId = parseInt(data.replace('deposit_chain_', ''));
-    await handleDepositChain(chatId, userId, chainId, env);
-  }
   // Strategy config: Step 1 - Pair selection
-  else if (data.startsWith('pair_')) {
+  if (data.startsWith('pair_')) {
     const pairId = parseInt(data.replace('pair_', ''));
     await handleConfigPairSelected(chatId, userId, pairId, env);
   }
@@ -588,75 +560,6 @@ Click ✅ Confirm to continue, or adjust using the buttons below.`;
 }
 
 /**
- * Handle deposit chain selection - call deposit worker
- */
-async function handleDepositChain(chatId, userId, chainId, env) {
-  try {
-    // Get user wallet and chain info
-    const user = await env.DB.prepare(
-      'SELECT UserWallet FROM Users WHERE UserID = ?'
-    ).bind(userId).first();
-
-    if (!user || !user.UserWallet) {
-      await sendMessage(chatId, env, {
-        text: '❌ User wallet not found. Please try /start again.'
-      });
-      return;
-    }
-
-    const chain = await env.DB.prepare(
-      'SELECT ChainID, ChainName, RPCEndpoint FROM Chains WHERE ChainID = ? AND IsActive = 1'
-    ).bind(chainId).first();
-
-    if (!chain) {
-      await sendMessage(chatId, env, {
-        text: '❌ Chain not available or inactive.'
-      });
-      return;
-    }
-
-    // Show loading message
-    await sendMessage(chatId, env, {
-      text: `⏳ *Processing Deposit for ${chain.ChainName}...*\n\nSetting up your Smart Contract Wallet...`,
-      parse_mode: 'Markdown'
-    });
-
-    // Call deposit worker
-    const depositResult = await callDepositWorker(
-      userId,
-      user.UserWallet,
-      chainId,
-      chain.RPCEndpoint,
-      env
-    );
-
-    if (!depositResult.success) {
-      // Handle errors
-      await handleDepositError(chatId, depositResult.errorCode, depositResult.error, chain, env);
-      return;
-    }
-
-    // Success - display deposit address
-    await displayDepositAddress(
-      chatId,
-      user.UserWallet,
-      depositResult.scwAddress,
-      chain,
-      env
-    );
-
-  } catch (error) {
-    console.error('Error in handleDepositChain:', error);
-    await sendMessage(chatId, env, {
-      text: '❌ An error occurred. Please try again later.'
-    });
-  }
-}
-
-/**
- * Call the deposit worker (blockchain backend)
- */
-/**
  * Generic worker caller for service bindings
  */
 async function callWorker(env, workerName, action, chatId, userId, username, text) {
@@ -695,90 +598,42 @@ async function callWorker(env, workerName, action, chatId, userId, username, tex
 }
 
 /**
- * Call deposit worker for SCW deployment
- */
-async function callDepositWorker(userId, userWallet, chainId, rpcUrl, env) {
-  try {
-    const response = await env.DEPOSIT_WORKER.fetch('https://internal/scw-deploy', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: userId,
-        userWallet: userWallet,
-        chainId: chainId,
-        rpcUrl: rpcUrl
-      })
-    });
-
-    const result = await response.json();
-    return result;
-  } catch (error) {
-    console.error('Error calling deposit worker:', error);
-    return {
-      success: false,
-      error: error.message,
-      errorCode: 'WORKER_ERROR'
-    };
-  }
-}
-
-/**
- * Handle deposit errors with user-friendly messages
- */
-async function handleDepositError(chatId, errorCode, errorMessage, chain, env) {
-  let message = '';
-
-  switch (errorCode) {
-    case 'DEPLOYMENT_FAILED':
-      message = `❌ *Failed to Deploy Smart Contract Wallet*\n\nThe deployment failed after 2 attempts.\n\n📧 *Contact Support:*\n• @LazaiTraderDev\n• support@lazaitrader.com\n\n💡 *You can try again in a few moments.*`;
-      break;
-    case 'CONFIG_ERROR':
-      message = `❌ *Service Configuration Error*\n\nOur system is experiencing a temporary issue.\n\n📧 *Contact Support:*\n• @LazaiTraderDev\n• support@lazaitrader.com`;
-      break;
-    case 'INVALID_INPUT':
-      message = `❌ *Invalid Input*\n\nPlease try again with the /deposit command.`;
-      break;
-    default:
-      message = `❌ *Error: ${errorMessage}*\n\n📧 *Contact Support:*\n• @LazaiTraderDev\n• support@lazaitrader.com`;
-  }
-
-  await sendMessage(chatId, env, {
-    text: message,
-    parse_mode: 'Markdown'
-  });
-}
-
-/**
  * Display deposit address with instructions
  */
-async function displayDepositAddress(chatId, userWallet, scwAddress, chain, env) {
-  // Get supported tokens for this chain
-  const tokens = await env.DB.prepare(
-    'SELECT Symbol FROM Tokens WHERE ChainID = ? AND IsActive = 1 ORDER BY Symbol'
-  ).bind(chain.ChainID).all();
+async function displayDepositAddress(chatId, userWallet, scwAddress, env) {
+  // Get all active chains and their tokens
+  const chains = await env.DB.prepare(
+    'SELECT ChainID, ChainName FROM Chains WHERE IsActive = 1 ORDER BY ChainID'
+  ).all();
 
-  const tokenList = tokens?.results?.map(t => `• ${t.Symbol}`).join('\n') || '(Loading...)';
+  let chainInfo = '';
+  for (const chain of chains.results || []) {
+    const tokens = await env.DB.prepare(
+      'SELECT Symbol FROM Tokens WHERE ChainID = ? AND IsActive = 1 ORDER BY Symbol'
+    ).bind(chain.ChainID).all();
+
+    const tokenList = tokens?.results?.map(t => t.Symbol).join(', ') || '(Loading...)';
+    chainInfo += `\n🔗 *${chain.ChainName}:* ${tokenList}`;
+  }
 
   const message = `
-✅ *Smart Contract Wallet Ready!*
+✅ *Your Smart Contract Wallet*
 
-🔗 *Network:* ${chain.ChainName}
-📬 *Your Deposit Address:*
+📬 *Deposit Address:*
 \`${scwAddress}\`
 
-💰 *Supported Tokens on ${chain.ChainName}:*
-${tokenList}
+💰 *Supported Networks & Tokens:*${chainInfo}
 
 📋 *How to Deposit:*
 1️⃣ Copy the wallet address above
 2️⃣ Go to your exchange or wallet
-3️⃣ Send tokens to this address on ${chain.ChainName}
+3️⃣ Send tokens to this address
 4️⃣ Wait for blockchain confirmation
 5️⃣ Your funds will appear in your trading wallet
 
 ⚠️ *IMPORTANT:*
-🔴 Only send tokens to this address on ${chain.ChainName}
-🔴 Sending to this address on OTHER networks = LOST FUNDS
+🔴 Only send tokens on SUPPORTED networks listed above
+🔴 Sending on unsupported networks = LOST FUNDS
 🔴 Always double-check the address before sending
 
 📊 *Your Wallets:*
@@ -794,11 +649,6 @@ Use /help or contact: support@lazaitrader.com
     parse_mode: 'Markdown'
   });
 }
-
-
-/**
- * Withdrawal logic imported from helper.withdrawalhandlers.js
- */
 
 /**
  * Handle /help command
@@ -959,8 +809,291 @@ async function displayBalances(chatId, balances, scwAddress, env) {
 }
 
 /**
- * Withdrawal handlers imported from helper.withdrawalhandlers.js
+ * Handle /chart command - generate and send trade history chart
  */
+async function handleChart(chatId, userId, env) {
+  try {
+    console.log(`[handleChart] User ${userId} requested chart`);
+
+    // Check if user is registered
+    const user = await env.DB.prepare(
+      'SELECT UserID, Username FROM Users WHERE UserID = ?'
+    ).bind(userId).first();
+
+    if (!user) {
+      await sendMessage(chatId, env, {
+        text: '❌ You are not registered yet. Please use /start to register first.'
+      });
+      return;
+    }
+
+    // Send loading message
+    await sendMessage(chatId, env, {
+      text: `⏳ *Generating your trade history chart...*\n\nThis may take a few moments...`,
+      parse_mode: 'Markdown'
+    });
+
+    // Call chart worker
+    const chartResult = await callChartWorker(userId, env);
+
+    if (!chartResult.success) {
+      await handleChartError(chatId, chartResult.errorCode, chartResult.error, env);
+      return;
+    }
+
+    // Send chart image to user
+    await sendChartToUser(chatId, chartResult, user.Username, env);
+
+  } catch (error) {
+    console.error('Error in handleChart:', error);
+    await sendMessage(chatId, env, {
+      text: '❌ An error occurred generating your chart. Please try again later.'
+    });
+  }
+}
+
+/**
+ * Call the chart worker
+ */
+async function callChartWorker(userId, env) {
+  try {
+    const response = await env.CHART_WORKER.fetch('https://internal/chart', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId
+      })
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error calling chart worker:', error);
+    return {
+      success: false,
+      error: error.message,
+      errorCode: 'WORKER_ERROR'
+    };
+  }
+}
+
+/**
+ * Handle chart generation errors
+ */
+async function handleChartError(chatId, errorCode, errorMessage, env) {
+  let message = '';
+
+  switch (errorCode) {
+    case 'NO_DATA':
+      message = `📊 *No Trading Data Found*\n\nYou haven't made any trades yet. Start trading to see your chart!\n\n💡 *How to get started:*\n1. Use /deposit to fund your wallet\n2. Use /config to set up a trading strategy\n3. Your trades will be executed automatically`;
+      break;
+    case 'WORKER_ERROR':
+      message = `❌ *Chart Generation Failed*\n\nOur chart service is temporarily unavailable.\n\nPlease try again in a few moments.`;
+      break;
+    default:
+      message = `❌ *Error: ${errorMessage}*\n\nPlease try again later or contact support.`;
+  }
+
+  await sendMessage(chatId, env, {
+    text: message,
+    parse_mode: 'Markdown'
+  });
+}
+
+/**
+ * Send chart to user via Telegram
+ */
+async function sendChartToUser(chatId, chartResult, username, env) {
+  const { chartUrl, stats, tradeCount, depositCount } = chartResult;
+
+  // Build stats message
+  let statsText = `📈 *Trade History Chart*\n\n`;
+  statsText += `👤 User: @${username || 'Unknown'}\n\n`;
+
+  if (stats) {
+    statsText += `📊 *Statistics:*\n`;
+    statsText += `• Total Trades: ${stats.totalTrades || 0}\n`;
+    statsText += `• Buy Orders: ${stats.buyCount || 0}\n`;
+    statsText += `• Sell Orders: ${stats.sellCount || 0}\n`;
+
+    if (stats.totalDeposits > 0) {
+      statsText += `• Total Deposits: ${stats.totalDeposits}\n`;
+    }
+
+    if (stats.pnlPercentage !== undefined && stats.totalTrades > 0) {
+      const pnlSign = stats.pnlPercentage >= 0 ? '+' : '';
+      statsText += `\n💰 *PnL: ${pnlSign}${stats.pnlPercentage.toFixed(2)}%*\n`;
+    }
+
+    if (stats.tradingPairs && stats.tradingPairs.length > 0) {
+      statsText += `\n🔄 *Trading Pairs:*\n`;
+      stats.tradingPairs.forEach(pair => {
+        statsText += `• ${pair}\n`;
+      });
+    }
+
+    if (stats.firstTradeDate && stats.lastTradeDate) {
+      statsText += `\n📅 Period: ${formatDisplayDate(stats.firstTradeDate)} - ${formatDisplayDate(stats.lastTradeDate)}`;
+    }
+  }
+
+  try {
+    // Send chart image via Telegram
+    const token = env.TELEGRAM_BOT_TOKEN || env.BOT_TOKEN;
+    const photoUrl = `https://api.telegram.org/bot${token}/sendPhoto`;
+
+    const photoResponse = await fetch(photoUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        photo: chartUrl,
+        caption: statsText,
+        parse_mode: 'Markdown'
+      })
+    });
+
+    if (!photoResponse.ok) {
+      const errorText = await photoResponse.text();
+      console.error('Failed to send chart photo:', errorText);
+
+      // Fallback: send chart URL as link
+      await sendMessage(chatId, env, {
+        text: `${statsText}\n\n🔗 [View Chart](${chartUrl})`,
+        parse_mode: 'Markdown'
+      });
+    }
+  } catch (error) {
+    console.error('Error sending chart:', error);
+    // Fallback: send chart URL as link
+    await sendMessage(chatId, env, {
+      text: `${statsText}\n\n🔗 [View Chart](${chartUrl})`,
+      parse_mode: 'Markdown'
+    });
+  }
+}
+
+/**
+ * Format date for display
+ */
+function formatDisplayDate(dateString) {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch (e) {
+    return dateString;
+  }
+}
+
+/**
+ * Handle /suggestion command - get AI-powered strategy suggestions
+ */
+async function handleSuggestion(chatId, userId, env) {
+  try {
+    console.log(`[handleSuggestion] User ${userId} requested suggestion`);
+
+    // Check if user is registered
+    const user = await env.DB.prepare(
+      'SELECT UserID, Username FROM Users WHERE UserID = ?'
+    ).bind(userId).first();
+
+    if (!user) {
+      await sendMessage(chatId, env, {
+        text: '❌ You are not registered yet. Please use /start to register first.'
+      });
+      return;
+    }
+
+    // Send loading message
+    await sendMessage(chatId, env, {
+      text: `🔮 *Analyzing your trading profile...*\n\nGetting personalized suggestions...`,
+      parse_mode: 'Markdown'
+    });
+
+    // Call suggestion worker
+    const suggestionResult = await callSuggestionWorker(userId, chatId, env);
+
+    if (!suggestionResult.success) {
+      await handleSuggestionError(chatId, suggestionResult.errorCode, suggestionResult.error, env);
+      return;
+    }
+
+    // Send suggestion to user
+    await sendSuggestionToUser(chatId, suggestionResult.suggestion, user.Username, env);
+
+  } catch (error) {
+    console.error('Error in handleSuggestion:', error);
+    await sendMessage(chatId, env, {
+      text: '❌ An error occurred generating your suggestion. Please try again later.'
+    });
+  }
+}
+
+/**
+ * Call the suggestion worker
+ */
+async function callSuggestionWorker(userId, chatId, env) {
+  try {
+    const response = await env.SUGGESTION_WORKER.fetch('https://internal/suggestion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId,
+        chatId: chatId
+      })
+    });
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error calling suggestion worker:', error);
+    return {
+      success: false,
+      error: error.message,
+      errorCode: 'WORKER_ERROR'
+    };
+  }
+}
+
+/**
+ * Handle suggestion errors
+ */
+async function handleSuggestionError(chatId, errorCode, errorMessage, env) {
+  let message = '';
+
+  switch (errorCode) {
+    case 'USER_NOT_FOUND':
+      message = `❌ *User Not Found*\n\nPlease use /start to register first.`;
+      break;
+    case 'LLM_ERROR':
+      message = `🔮 *Suggestion Unavailable*\n\nOur AI advisor is taking a break. Please try again in a few moments!`;
+      break;
+    case 'WORKER_ERROR':
+      message = `❌ *Service Unavailable*\n\nOur suggestion service is temporarily offline.\n\nPlease try again in a few moments.`;
+      break;
+    default:
+      message = `❌ *Error: ${errorMessage}*\n\nPlease try again later or contact support.`;
+  }
+
+  await sendMessage(chatId, env, {
+    text: message,
+    parse_mode: 'Markdown'
+  });
+}
+
+/**
+ * Send suggestion to user via Telegram
+ */
+async function sendSuggestionToUser(chatId, suggestion, username, env) {
+  let text = `🔮 *Strategy Suggestion*\n\n`;
+  text += `${suggestion}\n\n`;
+  text += `💡 _Use /config to update your strategies or /myconfig to view them._`;
+
+  await sendMessage(chatId, env, {
+    text: text,
+    parse_mode: 'Markdown'
+  });
+}
 
 /**
  * Helper Functions

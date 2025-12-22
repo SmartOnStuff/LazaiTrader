@@ -1,76 +1,15 @@
--- ============================================
--- LazaiTrader Trading Queue - Additional Tables
--- ============================================
--- NOTE: Trade queuing is handled by Cloudflare Queue (lt-trading-queue)
--- This file only contains tables for price fetching and caching
-
--- TABLE: PRICE API ENDPOINTS
--- Stores multiple API sources per base pair for fallback
--- Note: This is pair-agnostic for chains (ETH-USDC uses same API regardless of chain)
-CREATE TABLE IF NOT EXISTS PriceAPIEndpoints (
-    EndpointID INTEGER PRIMARY KEY AUTOINCREMENT,
-    BasePairSymbol TEXT NOT NULL,          -- e.g., 'ETH-USDC', 'BTC-ETH'
-    Provider TEXT NOT NULL,                 -- 'binance', 'dexscreener', 'coingecko', 'coinbase'
-    EndpointURL TEXT NOT NULL,              -- Full API URL with placeholders
-    ApiKeyEnvVar TEXT,                      -- Environment variable name for API key if needed
-    Priority INTEGER DEFAULT 1,             -- Lower = higher priority (try first)
-    IsActive INTEGER DEFAULT 1,
-    LastSuccessAt TEXT,
-    LastFailureAt TEXT,
-    ConsecutiveFailures INTEGER DEFAULT 0,
-    CreatedAt TEXT DEFAULT (datetime('now')),
-    UpdatedAt TEXT DEFAULT (datetime('now')),
-    UNIQUE(BasePairSymbol, Provider)
-);
-
--- Index for efficient lookups by base pair
-CREATE INDEX IF NOT EXISTS IX_PriceAPIEndpoints_BasePair_Priority 
-ON PriceAPIEndpoints(BasePairSymbol, Priority, IsActive);
-
--- TABLE: CACHED PRICES
--- Stores the most recent fetched price per base pair symbol
-CREATE TABLE IF NOT EXISTS CachedPrices (
-    CacheID INTEGER PRIMARY KEY AUTOINCREMENT,
-    BasePairSymbol TEXT NOT NULL UNIQUE,    -- e.g., 'ETH-USDC'
-    Price REAL NOT NULL,
-    Provider TEXT NOT NULL,                  -- Which API provided this price
-    FetchedAt TEXT DEFAULT (datetime('now'))
-);
-
-CREATE INDEX IF NOT EXISTS IX_CachedPrices_FetchedAt ON CachedPrices(FetchedAt);
-
--- ============================================
--- SAMPLE DATA: Price API Endpoints
--- ============================================
-
--- ETH-USDC (common pair, multiple providers)
-INSERT OR IGNORE INTO PriceAPIEndpoints (BasePairSymbol, Provider, EndpointURL, Priority) VALUES
-('ETH-USDC', 'binance', 'https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDC', 1),
-('ETH-USDC', 'coinbase', 'https://api.coinbase.com/v2/prices/ETH-USDC/spot', 2),
-('ETH-USDC', 'coingecko', 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd', 3);
-
--- BTC-USDC
-INSERT OR IGNORE INTO PriceAPIEndpoints (BasePairSymbol, Provider, EndpointURL, Priority) VALUES
-('BTC-USDC', 'binance', 'https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDC', 1),
-('BTC-USDC', 'coinbase', 'https://api.coinbase.com/v2/prices/BTC-USDC/spot', 2),
-('BTC-USDC', 'coingecko', 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd', 3);
-
--- METIS-USDC (might need DEX-specific APIs)
-INSERT OR IGNORE INTO PriceAPIEndpoints (BasePairSymbol, Provider, EndpointURL, Priority) VALUES
-('METIS-USDC', 'coingecko', 'https://api.coingecko.com/api/v3/simple/price?ids=metis-token&vs_currencies=usd', 1),
-('METIS-USDC', 'dexscreener', 'https://api.dexscreener.com/latest/dex/tokens/0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000', 2);
-
--- ETH-BTC (crypto-to-crypto pair)
-INSERT OR IGNORE INTO PriceAPIEndpoints (BasePairSymbol, Provider, EndpointURL, Priority) VALUES
-('ETH-BTC', 'binance', 'https://api.binance.com/api/v3/ticker/price?symbol=ETHBTC', 1),
-('ETH-BTC', 'coinbase', 'https://api.coinbase.com/v2/prices/ETH-BTC/spot', 2);
-
-
 -- =============================================
--- LazaiTrader Database Schema - Complete Reference
+-- LazaiTrader Database Schema
+-- Cloudflare D1 (SQLite)
+-- Last synced with production: 2025-12-16
 -- =============================================
 
--- TABLE 1: CHAINS
+-- =============================================
+-- TABLES
+-- =============================================
+
+-- TABLE: Chains
+-- Supported blockchain networks
 CREATE TABLE IF NOT EXISTS Chains (
     ChainID INTEGER PRIMARY KEY,
     ChainName TEXT NOT NULL UNIQUE,
@@ -82,7 +21,8 @@ CREATE TABLE IF NOT EXISTS Chains (
     UpdatedAt TEXT DEFAULT (datetime('now'))
 );
 
--- TABLE 2: USERS
+-- TABLE: Users
+-- Registered users with their wallets
 CREATE TABLE IF NOT EXISTS Users (
     UserID INTEGER PRIMARY KEY,
     UserWallet TEXT NOT NULL UNIQUE,
@@ -95,7 +35,8 @@ CREATE TABLE IF NOT EXISTS Users (
     UpdatedAt TEXT DEFAULT (datetime('now'))
 );
 
--- TABLE 3: TOKENS
+-- TABLE: Tokens
+-- ERC20 tokens per chain
 CREATE TABLE IF NOT EXISTS Tokens (
     TokenID INTEGER PRIMARY KEY AUTOINCREMENT,
     ChainID INTEGER NOT NULL,
@@ -111,7 +52,8 @@ CREATE TABLE IF NOT EXISTS Tokens (
     CHECK (Decimals >= 0 AND Decimals <= 18)
 );
 
--- TABLE 4: TRADING PAIRS
+-- TABLE: TradingPairs
+-- Trading pairs with DEX configuration
 CREATE TABLE IF NOT EXISTS TradingPairs (
     PairID INTEGER PRIMARY KEY AUTOINCREMENT,
     ChainID INTEGER NOT NULL,
@@ -119,8 +61,7 @@ CREATE TABLE IF NOT EXISTS TradingPairs (
     BaseTokenID INTEGER NOT NULL,
     QuoteTokenID INTEGER NOT NULL,
     DEXAddress TEXT NOT NULL,
-    PriceSource TEXT,
-    PriceAPI TEXT,
+    DEXType TEXT,
     IsActive INTEGER DEFAULT 1,
     CreatedAt TEXT DEFAULT (datetime('now')),
     UpdatedAt TEXT DEFAULT (datetime('now')),
@@ -131,7 +72,8 @@ CREATE TABLE IF NOT EXISTS TradingPairs (
     CHECK (BaseTokenID != QuoteTokenID)
 );
 
--- TABLE 5: USER TRADING CONFIGS
+-- TABLE: UserTradingConfigs
+-- User trading strategy configurations per pair
 CREATE TABLE IF NOT EXISTS UserTradingConfigs (
     ConfigID INTEGER PRIMARY KEY AUTOINCREMENT,
     UserID INTEGER NOT NULL,
@@ -152,7 +94,37 @@ CREATE TABLE IF NOT EXISTS UserTradingConfigs (
     CHECK (MaxAmount >= MinimumAmount)
 );
 
--- TABLE 6: PRICE HISTORY
+-- TABLE: PriceAPIEndpoints
+-- Price API sources with fallback support
+CREATE TABLE IF NOT EXISTS PriceAPIEndpoints (
+    EndpointID INTEGER PRIMARY KEY AUTOINCREMENT,
+    BasePairSymbol TEXT NOT NULL,
+    Provider TEXT NOT NULL,
+    EndpointURL TEXT NOT NULL,
+    ApiKeyEnvVar TEXT,
+    Priority INTEGER DEFAULT 1,
+    IsActive INTEGER DEFAULT 1,
+    LastSuccessAt TEXT,
+    LastFailureAt TEXT,
+    ConsecutiveFailures INTEGER DEFAULT 0,
+    ResponseSchema TEXT,
+    CreatedAt TEXT DEFAULT (datetime('now')),
+    UpdatedAt TEXT DEFAULT (datetime('now')),
+    UNIQUE(BasePairSymbol, Provider)
+);
+
+-- TABLE: CachedPrices
+-- Most recent fetched price per base pair
+CREATE TABLE IF NOT EXISTS CachedPrices (
+    CacheID INTEGER PRIMARY KEY AUTOINCREMENT,
+    BasePairSymbol TEXT NOT NULL UNIQUE,
+    Price REAL NOT NULL,
+    Provider TEXT NOT NULL,
+    FetchedAt TEXT DEFAULT (datetime('now'))
+);
+
+-- TABLE: PriceHistory
+-- Historical prices for trading pairs
 CREATE TABLE IF NOT EXISTS PriceHistory (
     PriceID INTEGER PRIMARY KEY AUTOINCREMENT,
     PairID INTEGER NOT NULL,
@@ -161,13 +133,16 @@ CREATE TABLE IF NOT EXISTS PriceHistory (
     FOREIGN KEY (PairID) REFERENCES TradingPairs(PairID)
 );
 
--- TABLE 7: TRADES
+-- TABLE: Trades
+-- Executed trades
 CREATE TABLE IF NOT EXISTS Trades (
     TradeID INTEGER PRIMARY KEY AUTOINCREMENT,
     PairID INTEGER NOT NULL,
     UserID INTEGER NOT NULL,
     PriceID INTEGER NOT NULL,
     Action TEXT NOT NULL,
+    TokenSent INTEGER,
+    TokenReceived INTEGER,
     QuantitySent REAL NOT NULL,
     QuantityReceived REAL NOT NULL,
     TxHash TEXT NOT NULL UNIQUE,
@@ -175,10 +150,13 @@ CREATE TABLE IF NOT EXISTS Trades (
     FOREIGN KEY (PairID) REFERENCES TradingPairs(PairID),
     FOREIGN KEY (UserID) REFERENCES Users(UserID),
     FOREIGN KEY (PriceID) REFERENCES PriceHistory(PriceID),
+    FOREIGN KEY (TokenSent) REFERENCES Tokens(TokenID),
+    FOREIGN KEY (TokenReceived) REFERENCES Tokens(TokenID),
     CHECK (Action IN ('BUY', 'SELL'))
 );
 
--- TABLE 8: TRADE METRICS
+-- TABLE: TradeMetrics
+-- Additional metrics for trades
 CREATE TABLE IF NOT EXISTS TradeMetrics (
     MetricID INTEGER PRIMARY KEY AUTOINCREMENT,
     TradeID INTEGER NOT NULL,
@@ -189,19 +167,24 @@ CREATE TABLE IF NOT EXISTS TradeMetrics (
     UNIQUE(TradeID)
 );
 
--- TABLE 9: USER BALANCES
+-- TABLE: UserBalances
+-- User token balances (historical tracking with each balance check)
+-- Each balance check creates a new row (no UNIQUE constraint)
+-- Updated by both /balance command (real-time) and scheduled worker (every 5 min)
 CREATE TABLE IF NOT EXISTS UserBalances (
     BalanceID INTEGER PRIMARY KEY AUTOINCREMENT,
     UserID INTEGER NOT NULL,
     TokenID INTEGER NOT NULL,
     Balance REAL NOT NULL,
+    BalanceUSDC REAL,
+    PriceUSDC REAL,
     CreatedAt TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (UserID) REFERENCES Users(UserID),
-    FOREIGN KEY (TokenID) REFERENCES Tokens(TokenID),
-    UNIQUE(UserID, TokenID)
+    FOREIGN KEY (TokenID) REFERENCES Tokens(TokenID)
 );
 
--- TABLE 10: SUGGESTIONS
+-- TABLE: Suggestions
+-- User suggestions/feedback
 CREATE TABLE IF NOT EXISTS Suggestions (
     SuggestionID INTEGER PRIMARY KEY AUTOINCREMENT,
     UserID INTEGER NOT NULL,
@@ -211,73 +194,175 @@ CREATE TABLE IF NOT EXISTS Suggestions (
     FOREIGN KEY (UserID) REFERENCES Users(UserID)
 );
 
+-- TABLE: RegistrationSessions
+-- User registration flow state
+CREATE TABLE IF NOT EXISTS RegistrationSessions (
+    SessionID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER NOT NULL UNIQUE,
+    TelegramChatID TEXT NOT NULL,
+    Username TEXT,
+    State TEXT NOT NULL,
+    CreatedAt TEXT DEFAULT (datetime('now')),
+    UpdatedAt TEXT DEFAULT (datetime('now'))
+);
+
+-- TABLE: SCWDeployments
+-- Smart Contract Wallet deployments per user/chain
+CREATE TABLE IF NOT EXISTS SCWDeployments (
+    DeploymentID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER NOT NULL,
+    ChainID INTEGER NOT NULL,
+    SCWAddress TEXT NOT NULL,
+    DeploymentStatus TEXT DEFAULT 'success',
+    TxHash TEXT,
+    DeployedAt TEXT DEFAULT (datetime('now')),
+    UpdatedAt TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID),
+    FOREIGN KEY (ChainID) REFERENCES Chains(ChainID),
+    UNIQUE(UserID, ChainID)
+);
+
+-- TABLE: DepositTransactions
+-- User deposits to SCW
+CREATE TABLE IF NOT EXISTS DepositTransactions (
+    DepositID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER NOT NULL,
+    ChainID INTEGER NOT NULL,
+    SCWAddress TEXT NOT NULL,
+    FromAddress TEXT,
+    TokenAddress TEXT,
+    Amount REAL NOT NULL,
+    TxHash TEXT UNIQUE,
+    ConfirmationCount INTEGER DEFAULT 0,
+    Status TEXT DEFAULT 'pending',
+    CreatedAt TEXT DEFAULT (datetime('now')),
+    ConfirmedAt TEXT,
+    FOREIGN KEY (UserID) REFERENCES Users(UserID),
+    FOREIGN KEY (ChainID) REFERENCES Chains(ChainID)
+);
+
+-- TABLE: Withdrawals
+-- User withdrawals from SCW
+CREATE TABLE IF NOT EXISTS Withdrawals (
+    WithdrawalID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER NOT NULL,
+    SCWAddress TEXT NOT NULL,
+    TokenID INTEGER NOT NULL,
+    TokenAddress TEXT NOT NULL,
+    Amount TEXT NOT NULL,
+    AmountFormatted TEXT,
+    RecipientAddress TEXT NOT NULL,
+    TxHash TEXT NOT NULL UNIQUE,
+    ChainID INTEGER NOT NULL,
+    Status TEXT DEFAULT 'confirmed',
+    WithdrawnAt TEXT DEFAULT (datetime('now')),
+    CreatedAt TEXT DEFAULT (datetime('now')),
+    UpdatedAt TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID),
+    FOREIGN KEY (TokenID) REFERENCES Tokens(TokenID),
+    FOREIGN KEY (ChainID) REFERENCES Chains(ChainID),
+    CHECK (Status IN ('pending', 'confirmed', 'failed'))
+);
+
+-- TABLE: UserStrategyPending
+-- Pending strategy selections
+CREATE TABLE IF NOT EXISTS UserStrategyPending (
+    PendingID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER NOT NULL,
+    PairID INTEGER NOT NULL,
+    CreatedAt TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID),
+    FOREIGN KEY (PairID) REFERENCES TradingPairs(PairID),
+    UNIQUE(UserID, PairID)
+);
+
 -- =============================================
 -- INDEXES
 -- =============================================
 
--- Chains Indexes
+-- Chains
 CREATE INDEX IF NOT EXISTS IX_Chains_ChainName ON Chains(ChainName);
 CREATE INDEX IF NOT EXISTS IX_Chains_IsActive ON Chains(IsActive);
 
--- Users Indexes
+-- Users
 CREATE INDEX IF NOT EXISTS IX_Users_Username ON Users(Username);
 CREATE INDEX IF NOT EXISTS IX_Users_SCWAddress ON Users(SCWAddress);
 
--- Tokens Indexes
+-- Tokens
 CREATE INDEX IF NOT EXISTS IX_Tokens_Symbol ON Tokens(Symbol);
 CREATE INDEX IF NOT EXISTS IX_Tokens_ChainID ON Tokens(ChainID);
 
--- Trading Pairs Indexes
+-- TradingPairs
 CREATE INDEX IF NOT EXISTS IX_TradingPairs_ChainID ON TradingPairs(ChainID);
 CREATE INDEX IF NOT EXISTS IX_TradingPairs_BaseToken ON TradingPairs(BaseTokenID);
 CREATE INDEX IF NOT EXISTS IX_TradingPairs_QuoteToken ON TradingPairs(QuoteTokenID);
 
--- User Trading Configs Indexes
+-- UserTradingConfigs
 CREATE INDEX IF NOT EXISTS IX_UserTradingConfigs_User ON UserTradingConfigs(UserID);
 CREATE INDEX IF NOT EXISTS IX_UserTradingConfigs_Pair ON UserTradingConfigs(PairID);
 
--- Price History Indexes
+-- PriceAPIEndpoints
+CREATE INDEX IF NOT EXISTS IX_PriceAPIEndpoints_BasePair_Priority ON PriceAPIEndpoints(BasePairSymbol, Priority, IsActive);
+CREATE INDEX IF NOT EXISTS IX_PriceAPIEndpoints_Provider ON PriceAPIEndpoints(Provider);
+
+-- CachedPrices
+CREATE INDEX IF NOT EXISTS IX_CachedPrices_FetchedAt ON CachedPrices(FetchedAt);
+
+-- PriceHistory
 CREATE INDEX IF NOT EXISTS IX_PriceHistory_Pair_CreatedAt ON PriceHistory(PairID, CreatedAt DESC);
 CREATE INDEX IF NOT EXISTS IX_PriceHistory_CreatedAt ON PriceHistory(CreatedAt);
 
--- Trades Indexes
+-- Trades
 CREATE INDEX IF NOT EXISTS IX_Trades_Pair_CreatedAt ON Trades(PairID, CreatedAt DESC);
 CREATE INDEX IF NOT EXISTS IX_Trades_User ON Trades(UserID);
 CREATE INDEX IF NOT EXISTS IX_Trades_CreatedAt ON Trades(CreatedAt);
 CREATE INDEX IF NOT EXISTS IX_Trades_TxHash ON Trades(TxHash);
 CREATE INDEX IF NOT EXISTS IX_Trades_User_CreatedAt ON Trades(UserID, CreatedAt DESC);
+CREATE INDEX IF NOT EXISTS IX_Trades_TokenSent ON Trades(TokenSent);
+CREATE INDEX IF NOT EXISTS IX_Trades_TokenReceived ON Trades(TokenReceived);
 
--- Trade Metrics Indexes
+-- TradeMetrics
 CREATE INDEX IF NOT EXISTS IX_TradeMetrics_TradeID ON TradeMetrics(TradeID);
 CREATE INDEX IF NOT EXISTS IX_TradeMetrics_ConsecutiveCount ON TradeMetrics(ConsecutiveCount);
 
--- User Balances Indexes
+-- UserBalances
 CREATE INDEX IF NOT EXISTS IX_UserBalances_User ON UserBalances(UserID);
 CREATE INDEX IF NOT EXISTS IX_UserBalances_Token ON UserBalances(TokenID);
-CREATE INDEX IF NOT EXISTS IX_UserBalances_User_Token ON UserBalances(UserID, TokenID);
+CREATE INDEX IF NOT EXISTS IX_UserBalances_User_Token_CreatedAt ON UserBalances(UserID, TokenID, CreatedAt DESC);
+CREATE INDEX IF NOT EXISTS IX_UserBalances_CreatedAt ON UserBalances(CreatedAt DESC);
 CREATE INDEX IF NOT EXISTS IX_UserBalances_Balance ON UserBalances(Balance);
 
--- Suggestions Indexes
+-- Suggestions
 CREATE INDEX IF NOT EXISTS IX_Suggestions_UserID ON Suggestions(UserID);
 CREATE INDEX IF NOT EXISTS IX_Suggestions_CreatedAt ON Suggestions(CreatedAt DESC);
 
--- =============================================
--- COMMON DATA (Chains & Tokens Only)
--- =============================================
+-- RegistrationSessions
+CREATE INDEX IF NOT EXISTS IX_RegistrationSessions_UserID ON RegistrationSessions(UserID);
+CREATE INDEX IF NOT EXISTS IX_RegistrationSessions_State ON RegistrationSessions(State);
+CREATE INDEX IF NOT EXISTS IX_RegistrationSessions_CreatedAt ON RegistrationSessions(CreatedAt);
 
--- Insert Chains
-INSERT INTO Chains (ChainID, ChainName, RPCEndpoint, ExplorerURL, NativeCurrency)
-VALUES
-(1088, 'Metis Andromeda', 'https://andromeda.metis.io/?owner=1088', 'https://explorer.metis.io', 'METIS'),
-(133717, 'Hyperion Testnet', 'https://hyperion-testnet.metisdevops.link', 'https://hyperion-testnet-explorer.metisdevops.link', 'tMETIS'),
-(48900, 'Zircuit', 'https://mainnet.zircuit.com', 'https://explorer.zircuit.com', 'ETH');
+-- SCWDeployments
+CREATE INDEX IF NOT EXISTS IX_SCWDeployments_User ON SCWDeployments(UserID);
+CREATE INDEX IF NOT EXISTS IX_SCWDeployments_Chain ON SCWDeployments(ChainID);
+CREATE INDEX IF NOT EXISTS IX_SCWDeployments_SCWAddress ON SCWDeployments(SCWAddress);
+CREATE INDEX IF NOT EXISTS IX_SCWDeployments_UserChain ON SCWDeployments(UserID, ChainID);
 
--- Insert Tokens (Hyperion Testnet)
-INSERT INTO Tokens (ChainID, Symbol, TokenAddress, Decimals)
-VALUES
-(133717, 'tgMetis', '0x69Dd3C70Ae76256De7Ec9AF5893DEE49356D45fc', 18),
-(133717, 'tgUSDC', '0x6Eb66c8bBD57FdA71ecCAAc40a56610C2CA8FDb8', 18),
-(133717, 'tgETH', '0x2222Fe85Dbe1Bd7CCB44f367767862fDbe15d6a8', 18);
+-- DepositTransactions
+CREATE INDEX IF NOT EXISTS IX_DepositTransactions_User ON DepositTransactions(UserID);
+CREATE INDEX IF NOT EXISTS IX_DepositTransactions_Status ON DepositTransactions(Status);
+CREATE INDEX IF NOT EXISTS IX_DepositTransactions_SCW ON DepositTransactions(SCWAddress);
+CREATE INDEX IF NOT EXISTS IX_DepositTransactions_CreatedAt ON DepositTransactions(CreatedAt DESC);
+
+-- Withdrawals
+CREATE INDEX IF NOT EXISTS IX_Withdrawals_UserID ON Withdrawals(UserID);
+CREATE INDEX IF NOT EXISTS IX_Withdrawals_ChainID ON Withdrawals(ChainID);
+CREATE INDEX IF NOT EXISTS IX_Withdrawals_Status ON Withdrawals(Status);
+CREATE INDEX IF NOT EXISTS IX_Withdrawals_TxHash ON Withdrawals(TxHash);
+CREATE INDEX IF NOT EXISTS IX_Withdrawals_WithdrawnAt ON Withdrawals(WithdrawnAt DESC);
+CREATE INDEX IF NOT EXISTS IX_Withdrawals_User_WithdrawnAt ON Withdrawals(UserID, WithdrawnAt DESC);
+
+-- UserStrategyPending
+CREATE INDEX IF NOT EXISTS IX_UserStrategyPending_User ON UserStrategyPending(UserID);
 
 -- =============================================
 -- VIEWS
@@ -346,13 +431,7 @@ WITH RankedPrices AS (
     INNER JOIN TradingPairs tp ON ph.PairID = tp.PairID
     INNER JOIN Chains c ON tp.ChainID = c.ChainID
 )
-SELECT
-    PairID,
-    PairName,
-    ChainName,
-    ChainID,
-    Price,
-    CreatedAt
+SELECT PairID, PairName, ChainName, ChainID, Price, CreatedAt
 FROM RankedPrices
 WHERE rn = 1;
 
@@ -381,7 +460,9 @@ SELECT
     c.ChainName,
     t.Action,
     ph.Price,
+    tSent.Symbol AS TokenSentSymbol,
     t.QuantitySent,
+    tReceived.Symbol AS TokenReceivedSymbol,
     t.QuantityReceived,
     tm.ConsecutiveCount,
     tm.ActualTradePercentage,
@@ -392,23 +473,77 @@ INNER JOIN Users u ON t.UserID = u.UserID
 INNER JOIN TradingPairs tp ON t.PairID = tp.PairID
 INNER JOIN Chains c ON tp.ChainID = c.ChainID
 INNER JOIN PriceHistory ph ON t.PriceID = ph.PriceID
+LEFT JOIN Tokens tSent ON t.TokenSent = tSent.TokenID
+LEFT JOIN Tokens tReceived ON t.TokenReceived = tReceived.TokenID
 LEFT JOIN TradeMetrics tm ON t.TradeID = tm.TradeID;
 
--- =============================================
--- SCHEMA SUMMARY
--- =============================================
--- Total Tables: 10
---   1. Chains
---   2. Users
---   3. Tokens
---   4. TradingPairs
---   5. UserTradingConfigs
---   6. PriceHistory
---   7. Trades
---   8. TradeMetrics
---   9. UserBalances
---   10. Suggestions
---
--- Total Indexes: 26
--- Total Views: 5
--- Common Data Included: 3 Chains, 3 Tokens (Hyperion Testnet)
+-- View: User Withdrawal History
+CREATE VIEW IF NOT EXISTS vw_UserWithdrawalHistory AS
+SELECT
+    w.WithdrawalID,
+    u.UserID,
+    u.Username,
+    c.ChainName,
+    t.Symbol,
+    w.Amount,
+    w.AmountFormatted,
+    w.TxHash,
+    w.Status,
+    w.WithdrawnAt
+FROM Withdrawals w
+INNER JOIN Users u ON w.UserID = u.UserID
+INNER JOIN Chains c ON w.ChainID = c.ChainID
+INNER JOIN Tokens t ON w.TokenID = t.TokenID;
+
+-- View: Withdrawal Summary
+CREATE VIEW IF NOT EXISTS vw_WithdrawalSummary AS
+SELECT
+    w.WithdrawalID,
+    u.UserID,
+    u.Username,
+    c.ChainName,
+    c.ChainID,
+    t.Symbol AS TokenSymbol,
+    w.Amount,
+    w.AmountFormatted,
+    w.RecipientAddress,
+    w.TxHash,
+    w.Status,
+    w.WithdrawnAt
+FROM Withdrawals w
+INNER JOIN Users u ON w.UserID = u.UserID
+INNER JOIN Chains c ON w.ChainID = c.ChainID
+INNER JOIN Tokens t ON w.TokenID = t.TokenID
+ORDER BY w.WithdrawnAt DESC;
+
+-- View: User Balances in USDC (Latest balance per user/token)
+CREATE VIEW IF NOT EXISTS vw_UserBalancesUSDC AS
+WITH LatestBalances AS (
+    SELECT
+        UserID,
+        TokenID,
+        Balance,
+        BalanceUSDC,
+        PriceUSDC,
+        CreatedAt,
+        ROW_NUMBER() OVER (PARTITION BY UserID, TokenID ORDER BY CreatedAt DESC) AS rn
+    FROM UserBalances
+)
+SELECT
+    lb.UserID,
+    u.Username,
+    u.SCWAddress,
+    c.ChainName,
+    c.ChainID,
+    t.TokenID,
+    t.Symbol AS TokenSymbol,
+    t.TokenAddress,
+    lb.Balance,
+    lb.PriceUSDC,
+    lb.BalanceUSDC,
+    lb.CreatedAt AS LastUpdated
+FROM LatestBalances lb
+INNER JOIN Users u ON lb.UserID = u.UserID
+INNER JOIN Tokens t ON lb.TokenID = t.TokenID
+INNER JOIN Chains c ON t.ChainID = c.ChainID
+WHERE lb.rn = 1;

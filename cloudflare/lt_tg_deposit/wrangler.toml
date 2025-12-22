@@ -1,21 +1,54 @@
-name = "lt_tg_deposit"
+# ============================================
+# LazaiTrader Deposit Worker
+# Deploys SCW on all supported chains
+# ============================================
+name = "lt-deposit"
 main = "worker.js"
 compatibility_date = "2024-01-01"
-type = "module"
 
+# Required for ethers.js
+node_compat = true
+
+# ============================================
 # D1 Database Binding
+# ============================================
 [[d1_databases]]
 binding = "DB"
 database_name = "lazaitrader"
 database_id = "64791295-2134-4306-a6e9-4a45619aab05"
 
+# ============================================
+# Environment Variables
+# ============================================
+[vars]
+ENVIRONMENT = "production"
 
-[env.production]
-# Production environment settings
+# ============================================
+# Secrets (set via wrangler secret put)
+# ============================================
+# Run these commands to set secrets:
+#   wrangler secret put BOT_PRIVATE_KEY
+#   wrangler secret put FACTORY_CONTRACT_ADDRESS
+#
+# BOT_PRIVATE_KEY = "..." (private key for bot wallet that deploys SCWs)
+# FACTORY_CONTRACT_ADDRESS = "..." (deterministic factory address - same on all chains)
 
+# ============================================
+# Development Configuration
+# ============================================
+[env.dev]
+name = "lt-deposit-dev"
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "lazaitrader"
+database_id = "64791295-2134-4306-a6e9-4a45619aab05"
+
+# ============================================
+# Observability
+# ============================================
 [observability]
-[observability.logs]
 enabled = true
-head_sampling_rate = 1
-invocation_logs = true
-persist = true

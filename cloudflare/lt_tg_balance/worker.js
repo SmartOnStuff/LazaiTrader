@@ -2,12 +2,13 @@
  * LazaiTrader Balance Worker - Cloudflare Worker
  * Fetches Smart Contract Wallet balances from blockchain
  * Saves to UserBalances table for reference
- * 
+ *
  * Input: { userId, scwAddress }
  * Output: { success, balances, error }
  */
 
 import { ethers } from 'ethers';
+import { getTokenPriceUSDC, normalizeTokenSymbol } from '../shared/priceHelper.js';
 
 const ERC20_ABI = [
   {
@@ -103,24 +104,43 @@ export default {
             const balance = await tokenContract.balanceOf(scwAddress);
             const balanceFormatted = ethers.formatUnits(balance, token.Decimals);
 
-            console.log(`[balance] ${token.Symbol}: ${balanceFormatted}`);
+            // Get token price in USDC (real-time, no delay)
+            let priceUSDC = null;
+            let balanceUSDC = null;
+
+            // Normalize symbol to handle variants (M.USDC, GUSDC, etc.)
+            const normalizedSymbol = normalizeTokenSymbol(token.Symbol);
+
+            if (normalizedSymbol !== 'USDC') {
+              const priceData = await getTokenPriceUSDC(env.DB, token.Symbol, 'USDC', 5);
+              if (priceData) {
+                priceUSDC = priceData.price;
+                balanceUSDC = parseFloat(balanceFormatted) * priceUSDC;
+              }
+            } else {
+              // USDC variants (USDC, M.USDC, GUSDC) - price is always 1
+              priceUSDC = 1.0;
+              balanceUSDC = parseFloat(balanceFormatted);
+            }
+
+            console.log(`[balance] ${token.Symbol}: ${balanceFormatted} ($${balanceUSDC ? balanceUSDC.toFixed(2) : 'N/A'})`);
 
             balances[chain.ChainID].tokens.push({
               symbol: token.Symbol,
               tokenAddress: token.TokenAddress,
               balance: balance.toString(),
               balanceFormatted: balanceFormatted,
+              balanceUSDC: balanceUSDC,
               decimals: token.Decimals,
               tokenId: token.TokenID
             });
 
-            // Save to UserBalances table
+            // Save to UserBalances table (creates new row for historical tracking)
             try {
               await env.DB.prepare(
-                `INSERT INTO UserBalances (UserID, TokenID, Balance) 
-                 VALUES (?, ?, ?)
-                 ON CONFLICT(UserID, TokenID) DO UPDATE SET Balance = ?`
-              ).bind(userId, token.TokenID, parseFloat(balanceFormatted), parseFloat(balanceFormatted)).run();
+                `INSERT INTO UserBalances (UserID, TokenID, Balance, BalanceUSDC, PriceUSDC, CreatedAt)
+                 VALUES (?, ?, ?, ?, ?, datetime('now'))`
+              ).bind(userId, token.TokenID, parseFloat(balanceFormatted), balanceUSDC, priceUSDC).run();
             } catch (dbError) {
               console.error(`[balance] DB error for ${token.Symbol}:`, dbError.message);
             }

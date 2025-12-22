@@ -1,27 +1,29 @@
 /**
  * LazaiTrader Trading Execution Worker (Consumer)
- * 
+ *
  * Triggered by messages in the Cloudflare Queue.
  * Processes one trade at a time:
  * 1. Re-validates trigger condition with fresh price
  * 2. Calculates trade amount with consecutive multiplier
  * 3. Applies Min/Max USD limits
- * 4. Executes trade via SCW
- * 5. Records trade and metrics in DB
- * 6. Notifies user via Telegram
+ * 4. Routes to appropriate DEX handler based on DEXType
+ * 5. Executes trade via SCW
+ * 6. Records trade and metrics in DB
+ * 7. Notifies user via Telegram
+ *
+ * Supported DEX Types:
+ * - LazaiSwap: Oracle-based DEX with setPrices + swap interface
+ * - CamelotYakRouter: Yak Router aggregator for optimal swap paths
  */
 
 import { ethers } from 'ethers';
+import * as dexHandlers from './dex/index.js';
+import { parsePrice } from '../shared/priceParser.js';
+import tokenMappings from '../shared/tokenMappings.json';
 
 // ============================================
 // ABIs
 // ============================================
-
-const ERC20_ABI = [
-  'function balanceOf(address account) view returns (uint256)',
-  'function decimals() view returns (uint8)',
-  'function symbol() view returns (string)'
-];
 
 const SCW_ABI = [
   'function executeTrade(address _dex, bytes _data) returns (bool success, bytes returnData)',
@@ -31,64 +33,13 @@ const SCW_ABI = [
   'function isDEXWhitelisted(address _dex) view returns (bool)'
 ];
 
-const DEX_ABI = [
-  'function swap(address tokenInAddr, uint256 amountIn)',
-  'function setPrices(uint256 _baseToQuote, uint256 _quoteToBase)'
-];
-
-// ============================================
-// ORACLE PRICE UPDATE
-// ============================================
-
-/**
- * Calculate oracle prices from USD price
- * Both tokens are 18 decimals, contract expects 1e18 scaling for price ratios
- */
-function calculateOraclePrices(priceUSD) {
-  // Price base to quote (e.g., ETH price in USDC terms)
-  const priceBaseToQuote = BigInt(Math.floor(priceUSD * 1e18));
-  // Price quote to base (inverse)
-  const priceQuoteToBase = BigInt(Math.floor((1 / priceUSD) * 1e18));
-  
-  return { priceBaseToQuote, priceQuoteToBase };
-}
-
-/**
- * Update DEX oracle prices before executing trade
- * This ensures the DEX has accurate prices for the swap
- */
-async function updateOraclePrices(
-  provider,
-  oracleOwnerWallet,
-  dexAddress,
-  priceUSD
-) {
-  const { priceBaseToQuote, priceQuoteToBase } = calculateOraclePrices(priceUSD);
-  
-  const dex = new ethers.Contract(dexAddress, DEX_ABI, oracleOwnerWallet);
-  
-  console.log(`[ORACLE] Updating prices: baseToQuote=${priceBaseToQuote}, quoteToBase=${priceQuoteToBase}`);
-  
-  const tx = await dex.setPrices(priceBaseToQuote, priceQuoteToBase, {
-    gasLimit: 200000
-  });
-  
-  const receipt = await tx.wait();
-  
-  return {
-    success: receipt.status === 1,
-    txHash: receipt.hash,
-    priceBaseToQuote: priceBaseToQuote.toString(),
-    priceQuoteToBase: priceQuoteToBase.toString()
-  };
-}
-
 // ============================================
 // PRICE FETCHING
 // ============================================
 
 /**
  * Normalize base pair symbol from trading pair name
+ * Uses shared tokenMappings.json for consistent symbol normalization
  */
 function normalizeBasePairSymbol(pairName) {
   let normalized = pairName
@@ -97,53 +48,10 @@ function normalizeBasePairSymbol(pairName) {
     .replace(/^t/gi, '')
     .replace(/-t/gi, '-')
     .toUpperCase();
-  
-  const symbolMap = {
-    'GETH': 'ETH',
-    'GUSDC': 'USDC',
-    'GBTC': 'BTC',
-    'WETH': 'ETH',
-    'WBTC': 'BTC',
-  };
-  
-  const parts = normalized.split('-');
-  const mappedParts = parts.map(p => symbolMap[p] || p);
-  return mappedParts.join('-');
-}
 
-/**
- * Parse price from various API response formats
- */
-function parsePrice(provider, data) {
-  try {
-    switch (provider.toLowerCase()) {
-      case 'binance':
-        return parseFloat(data.price);
-      case 'coinbase':
-        return parseFloat(data.data?.amount);
-      case 'coingecko':
-        const keys = Object.keys(data);
-        if (keys.length > 0) {
-          const tokenData = data[keys[0]];
-          const priceKeys = Object.keys(tokenData);
-          if (priceKeys.length > 0) {
-            return parseFloat(tokenData[priceKeys[0]]);
-          }
-        }
-        return null;
-      case 'dexscreener':
-        if (data.pairs && data.pairs.length > 0) {
-          return parseFloat(data.pairs[0].priceUsd);
-        }
-        return null;
-      default:
-        if (data.price) return parseFloat(data.price);
-        if (data.last) return parseFloat(data.last);
-        return null;
-    }
-  } catch (e) {
-    return null;
-  }
+  const parts = normalized.split('-');
+  const mappedParts = parts.map(p => tokenMappings.symbolMap[p] || p);
+  return mappedParts.join('-');
 }
 
 /**
@@ -151,34 +59,37 @@ function parsePrice(provider, data) {
  */
 async function fetchFreshPrice(db, pairName) {
   const basePairSymbol = normalizeBasePairSymbol(pairName);
-  
+
   const endpoints = await db.prepare(`
-    SELECT * FROM PriceAPIEndpoints 
-    WHERE BasePairSymbol = ? AND IsActive = 1 
+    SELECT * FROM PriceAPIEndpoints
+    WHERE BasePairSymbol = ? AND IsActive = 1
     ORDER BY Priority ASC
   `).bind(basePairSymbol).all();
-  
+
   if (!endpoints.results || endpoints.results.length === 0) {
     return null;
   }
-  
+
   for (const endpoint of endpoints.results) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
+
       const response = await fetch(endpoint.EndpointURL, {
         signal: controller.signal,
         headers: { 'Accept': 'application/json' }
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) continue;
-      
+
       const data = await response.json();
-      const price = parsePrice(endpoint.Provider, data);
-      
+
+      // Use ResponseSchema if available, otherwise fall back to provider-based parsing
+      const schemaOrProvider = endpoint.ResponseSchema || endpoint.Provider;
+      const price = parsePrice(data, schemaOrProvider);
+
       if (price && price > 0) {
         return { price, provider: endpoint.Provider };
       }
@@ -186,7 +97,7 @@ async function fetchFreshPrice(db, pairName) {
       continue;
     }
   }
-  
+
   return null;
 }
 
@@ -361,52 +272,6 @@ async function approveTokenOnSCW(
   };
 }
 
-/**
- * Execute trade on DEX through SCW
- */
-async function executeTrade(
-  provider,
-  botWallet,
-  scwAddress,
-  dexAddress,
-  tokenInAddress,
-  amountInWei
-) {
-  console.log(`[EXECUTE] SCW: ${scwAddress}`);
-  console.log(`[EXECUTE] DEX: ${dexAddress}`);
-  console.log(`[EXECUTE] Token In: ${tokenInAddress}`);
-  console.log(`[EXECUTE] Amount Wei: ${amountInWei.toString()}`);
-  
-  const scw = new ethers.Contract(scwAddress, SCW_ABI, botWallet);
-  
-  // Encode swap call data using ABI coder directly
-  const abiCoder = ethers.AbiCoder.defaultAbiCoder();
-  const swapSelector = ethers.id('swap(address,uint256)').slice(0, 10); // Function selector
-  const encodedParams = abiCoder.encode(
-    ['address', 'uint256'],
-    [tokenInAddress, amountInWei]
-  );
-  const swapData = swapSelector + encodedParams.slice(2); // Remove '0x' from params
-  
-  console.log(`[EXECUTE] Swap selector: ${swapSelector}`);
-  console.log(`[EXECUTE] Swap data: ${swapData}`);
-  console.log(`[EXECUTE] Swap data length: ${swapData.length}`);
-  
-  // Execute trade through SCW
-  const tx = await scw.executeTrade(dexAddress, swapData, {
-    gasLimit: 500000
-  });
-  
-  console.log(`[EXECUTE] TX Hash: ${tx.hash}`);
-  
-  const receipt = await tx.wait();
-  
-  return {
-    success: receipt.status === 1,
-    txHash: receipt.hash,
-    gasUsed: receipt.gasUsed.toString()
-  };
-}
 
 // ============================================
 // DATABASE OPERATIONS
@@ -421,25 +286,27 @@ async function recordTrade(db, tradeData) {
     INSERT INTO PriceHistory (PairID, Price, CreatedAt)
     VALUES (?, ?, datetime('now'))
   `).bind(tradeData.pairId, tradeData.price).run();
-  
+
   const priceId = priceResult.meta?.last_row_id;
-  
-  // Insert trade
+
+  // Insert trade with token IDs
   const tradeResult = await db.prepare(`
-    INSERT INTO Trades (PairID, UserID, PriceID, Action, QuantitySent, QuantityReceived, TxHash, CreatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    INSERT INTO Trades (PairID, UserID, PriceID, Action, TokenSent, TokenReceived, QuantitySent, QuantityReceived, TxHash, CreatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
   `).bind(
     tradeData.pairId,
     tradeData.userId,
     priceId,
     tradeData.action,
+    tradeData.tokenSent,
+    tradeData.tokenReceived,
     tradeData.quantitySent,
     tradeData.quantityReceived,
     tradeData.txHash
   ).run();
-  
+
   const tradeId = tradeResult.meta?.last_row_id;
-  
+
   // Insert trade metrics
   await db.prepare(`
     INSERT INTO TradeMetrics (TradeID, ConsecutiveCount, ActualTradePercentage, CreatedAt)
@@ -449,7 +316,7 @@ async function recordTrade(db, tradeData) {
     tradeData.consecutiveCount,
     tradeData.actualTradePercentage
   ).run();
-  
+
   return { tradeId, priceId };
 }
 
@@ -597,15 +464,23 @@ async function processTradeMessage(message, env) {
     const provider = new ethers.JsonRpcProvider(trade.chain.rpcEndpoint);
     
     // Determine which token we're selling
-    const tokenIn = validation.action === 'SELL' 
-      ? trade.pair.baseToken 
+    const tokenIn = validation.action === 'SELL'
+      ? trade.pair.baseToken
       : trade.pair.quoteToken;
-    
+
     const tokenOut = validation.action === 'SELL'
       ? trade.pair.quoteToken
       : trade.pair.baseToken;
-    
+
+    // Calculate the USD price of the token being sold
+    // - For SELL (selling base token like ETH): use currentPrice (e.g., $2938)
+    // - For BUY (selling quote token like USDC): quote tokens are typically stablecoins worth ~$1
+    const tokenInPriceUSD = validation.action === 'SELL'
+      ? currentPrice  // Base token price (e.g., ETH = $2938)
+      : 1;            // Quote token price (stablecoin = $1)
+
     console.log(`[TRADE] ${validation.action}: Selling ${tokenIn.symbol} for ${tokenOut.symbol}`);
+    console.log(`[TRADE] Token in price: $${tokenInPriceUSD} per ${tokenIn.symbol}`);
     
     // Get SCW balance of token to sell
     const balanceWei = await getSCWTokenBalance(
@@ -619,13 +494,15 @@ async function processTradeMessage(message, env) {
     // Step 6: Check for zero balance
     if (balance <= 0) {
       console.log(`[SKIP] Zero balance - cannot execute trade`);
-      
+
       // Record as 0-amount trade with explanation
       await recordTrade(db, {
         pairId: trade.pairId,
         userId: trade.userId,
         price: currentPrice,
         action: validation.action,
+        tokenSent: tokenIn.tokenId,
+        tokenReceived: tokenOut.tokenId,
         quantitySent: 0,
         quantityReceived: 0,
         txHash: `NO_BALANCE-${trade.userId}-${trade.pairId}-${Date.now()}`,
@@ -651,11 +528,12 @@ async function processTradeMessage(message, env) {
     }
     
     // Step 7: Calculate trade amount with limits
+    // Use tokenInPriceUSD (not currentPrice) to correctly calculate USD value of the token being sold
     const tradeCalc = calculateTradeAmount(
       balance,
       tokenIn.decimals,
       actualTradePercentage,
-      currentPrice,
+      tokenInPriceUSD,  // Use price of token being sold, not always the base token price
       trade.minimumAmount,
       trade.maxAmount
     );
@@ -663,13 +541,15 @@ async function processTradeMessage(message, env) {
     // Step 8: Handle below minimum case
     if (tradeCalc.belowMinimum) {
       console.log(`[MINIMUM] Trade below minimum: ${tradeCalc.reason}`);
-      
+
       // Record as 0-amount trade with explanation
       await recordTrade(db, {
         pairId: trade.pairId,
         userId: trade.userId,
         price: currentPrice,
         action: validation.action,
+        tokenSent: tokenIn.tokenId,
+        tokenReceived: tokenOut.tokenId,
         quantitySent: 0,
         quantityReceived: 0,
         txHash: `BELOW_MIN-${trade.userId}-${trade.pairId}-${Date.now()}`,
@@ -694,40 +574,59 @@ async function processTradeMessage(message, env) {
     }
     
     console.log(`[TRADE] Amount to trade: ${tradeCalc.amount} ${tokenIn.symbol} ($${tradeCalc.amountUSD.toFixed(2)})${tradeCalc.capped ? ' [CAPPED]' : ''}`);
-    
-    // Step 9: Connect bot wallet and update oracle prices
+
+    // Step 9: Get DEX handler based on DEXType
+    const dexType = trade.pair.dexType || 'LazaiSwap'; // Default to LazaiSwap for backwards compatibility
+    console.log(`[DEX] Using DEX handler: ${dexType}`);
+
+    const dexHandler = dexHandlers.getHandler(dexType);
+    if (!dexHandler) {
+      console.error(`[ERROR] Unsupported DEX type: ${dexType}`);
+      console.error(`[ERROR] Supported types: ${dexHandlers.getSupportedTypes().join(', ')}`);
+      message.ack(); // Don't retry - this is a configuration error
+      return;
+    }
+
+    const dexInfo = dexHandler.getInfo();
+    console.log(`[DEX] Handler info: ${dexInfo.description}`);
+
+    // Step 10: Connect bot wallet
     const botWallet = new ethers.Wallet(env.BOT_PRIVATE_KEY, provider);
-    
-    // Update DEX oracle with fresh price before executing trade
-    console.log(`[ORACLE] Updating DEX oracle prices...`);
-    try {
-      const oracleResult = await updateOraclePrices(
-        provider,
-        botWallet,  // Bot wallet is also the oracle owner
-        trade.pair.dexAddress,
-        currentPrice
-      );
-      
-      if (!oracleResult.success) {
-        console.error(`[ERROR] Failed to update oracle prices`);
+    const scwContract = new ethers.Contract(trade.scwAddress, SCW_ABI, botWallet);
+
+    // Step 11: Update oracle prices (if required by DEX type)
+    if (dexInfo.requiresOracleUpdate) {
+      console.log(`[ORACLE] Updating DEX oracle prices...`);
+      try {
+        const oracleResult = await dexHandler.updateOraclePrices(
+          botWallet,
+          trade.pair.dexAddress,
+          currentPrice
+        );
+
+        if (!oracleResult.success) {
+          console.error(`[ERROR] Failed to update oracle prices`);
+          message.retry();
+          return;
+        }
+
+        console.log(`[ORACLE] Prices updated successfully. TxHash: ${oracleResult.txHash}`);
+      } catch (oracleError) {
+        console.error(`[ERROR] Oracle update failed: ${oracleError.message}`);
         message.retry();
         return;
       }
-      
-      console.log(`[ORACLE] Prices updated successfully. TxHash: ${oracleResult.txHash}`);
-    } catch (oracleError) {
-      console.error(`[ERROR] Oracle update failed: ${oracleError.message}`);
-      message.retry();
-      return;
+    } else {
+      console.log(`[ORACLE] DEX type ${dexType} does not require oracle updates`);
     }
-    
+
     // Calculate amount in wei for approval and trade
     const amountWei = ethers.parseUnits(
       tradeCalc.amount.toFixed(tokenIn.decimals),
       tokenIn.decimals
     );
-    
-    // Step 10: Approve token from SCW to DEX
+
+    // Step 12: Approve token from SCW to DEX
     console.log(`[APPROVE] Approving token for trade...`);
     try {
       const approvalResult = await approveTokenOnSCW(
@@ -737,60 +636,98 @@ async function processTradeMessage(message, env) {
         trade.pair.dexAddress,
         amountWei
       );
-      
+
       if (!approvalResult.success) {
         console.error(`[ERROR] Token approval failed`);
         message.retry();
         return;
       }
-      
+
       console.log(`[APPROVE] Token approved successfully. TxHash: ${approvalResult.txHash}`);
     } catch (approvalError) {
       console.error(`[ERROR] Token approval failed: ${approvalError.message}`);
       message.retry();
       return;
     }
-    
-    // Step 11: Execute trade
-    console.log(`[EXECUTE] Executing trade on DEX ${trade.pair.dexAddress}...`);
-    
-    const result = await executeTrade(
-      provider,
-      botWallet,
-      trade.scwAddress,
-      trade.pair.dexAddress,
-      tokenIn.address,
-      amountWei
-    );
-    
-    if (!result.success) {
-      console.error(`[ERROR] Trade execution failed`);
+
+    // Step 13: Execute trade via DEX handler
+    console.log(`[EXECUTE] Executing trade on ${dexType} DEX ${trade.pair.dexAddress}...`);
+
+    let result;
+    try {
+      if (dexType === 'CamelotYakRouter') {
+        // CamelotYakRouter needs tokenOut for path finding
+        result = await dexHandler.executeSwap(
+          scwContract,
+          trade.pair.dexAddress,
+          tokenIn.address,
+          tokenOut.address,
+          amountWei,
+          50 // 0.5% slippage
+        );
+      } else {
+        // LazaiSwap and other simple DEXes
+        result = await dexHandler.executeSwap(
+          scwContract,
+          trade.pair.dexAddress,
+          tokenIn.address,
+          amountWei
+        );
+      }
+
+      if (!result.success) {
+        console.error(`[ERROR] Trade execution failed`);
+        message.retry();
+        return;
+      }
+    } catch (execError) {
+      console.error(`[ERROR] Trade execution failed: ${execError.message}`);
       message.retry();
       return;
     }
-    
+
     console.log(`[SUCCESS] Trade executed! TxHash: ${result.txHash}`);
-    
-    // Step 12: Record trade in database
-    // Note: We record quantitySent, quantityReceived would need to be parsed from events
-    // For simplicity, we'll estimate based on price
-    const estimatedReceived = tradeCalc.amount; // In practice, parse from tx receipt
-    
+
+    // Step 14: Calculate actual quantities sent and received
+    // QuantitySent is what we're selling (always tradeCalc.amount)
+    const quantitySent = tradeCalc.amount;
+
+    // QuantityReceived depends on the trade action and price:
+    // - SELL: Selling base token (e.g., ETH) -> receive quote token (e.g., USDC)
+    //         QuantityReceived = QuantitySent * currentPrice
+    // - BUY:  Selling quote token (e.g., USDC) -> receive base token (e.g., ETH)
+    //         QuantityReceived = QuantitySent / currentPrice
+    let quantityReceived;
+    if (validation.action === 'SELL') {
+      // Selling base token, receiving quote token
+      // Example: Sell 1 ETH at $3000 = receive 3000 USDC
+      quantityReceived = quantitySent * currentPrice;
+    } else {
+      // Buying base token with quote token
+      // Example: Buy ETH with 3000 USDC at $3000 = receive 1 ETH
+      quantityReceived = quantitySent / currentPrice;
+    }
+
+    console.log(`[TRADE] Sent: ${quantitySent} ${tokenIn.symbol}, Received: ${quantityReceived.toFixed(5)} ${tokenOut.symbol}`);
+
+    // Step 15: Record trade in database
     const { tradeId } = await recordTrade(db, {
       pairId: trade.pairId,
       userId: trade.userId,
       price: currentPrice,
       action: validation.action,
-      quantitySent: tradeCalc.amount,
-      quantityReceived: estimatedReceived,
+      tokenSent: tokenIn.tokenId,
+      tokenReceived: tokenOut.tokenId,
+      quantitySent: quantitySent,
+      quantityReceived: quantityReceived,
       txHash: result.txHash,
       consecutiveCount: consecutiveCount,
       actualTradePercentage: actualTradePercentage
     });
     
     console.log(`[DB] Recorded trade ID: ${tradeId}`);
-    
-    // Step 13: Send Telegram notification
+
+    // Step 16: Send Telegram notification
     await sendTelegramNotification(
       env.TELEGRAM_BOT_TOKEN,
       trade.telegramChatId,

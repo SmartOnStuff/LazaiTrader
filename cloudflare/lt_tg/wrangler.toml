@@ -30,6 +30,16 @@ service = "lt-tg-withdrawal"
 binding = "BALANCE_WORKER"
 service = "lt-tg-balance"
 
+# Chart Worker Service Binding
+[[services]]
+binding = "CHART_WORKER"
+service = "lt-tg-chart"
+
+# Suggestion Worker Service Binding
+[[services]]
+binding = "SUGGESTION_WORKER"
+service = "lt-tg-suggestion"
+
 # Bind account-level secrets to this worker
 # [[secrets_store_secrets]]
 # binding = "BOT_TOKEN"

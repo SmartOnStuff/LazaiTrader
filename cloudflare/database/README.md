@@ -1,221 +1,117 @@
-# LazaiTrader D1 Database
+# LazaiTrader Database Schema
 
-This folder contains the Cloudflare D1 database schema and configuration for the LazaiTrader bot.
+This directory contains the Cloudflare D1 (SQLite) database schema for LazaiTrader.
 
-## Database Overview
+## Files
 
-**Database Type:** Cloudflare D1 (SQLite-based)
+- `schema.sql` - Complete database schema synced with production
 
-**Tables:** 10
-- Chains
-- Users
-- Tokens
-- TradingPairs
-- UserTradingConfigs
-- PriceHistory
-- Trades
-- TradeMetrics
-- UserBalances
-- Suggestions
+## Schema Overview
 
-**Views:** 5
-- vw_ActiveUserTradingConfigs
-- vw_TradeSummaryByUserPair
-- vw_LatestPricesByPair
-- vw_UserBalances
-- vw_TradeDetails
+### Tables (16 total)
 
-## Setup Instructions
+| Table | Description |
+|-------|-------------|
+| `Chains` | Supported blockchain networks |
+| `Users` | Registered users with wallet addresses |
+| `Tokens` | ERC20 tokens per chain |
+| `TradingPairs` | Trading pairs with DEX configuration |
+| `UserTradingConfigs` | User trading strategy settings |
+| `PriceAPIEndpoints` | Price API sources with fallback support |
+| `CachedPrices` | Most recent fetched prices |
+| `PriceHistory` | Historical price records |
+| `Trades` | Executed trade records |
+| `TradeMetrics` | Additional trade metrics |
+| `UserBalances` | Cached user token balances |
+| `Suggestions` | User feedback/suggestions |
+| `RegistrationSessions` | User registration flow state |
+| `SCWDeployments` | Smart Contract Wallet deployments |
+| `DepositTransactions` | User deposits to SCW |
+| `Withdrawals` | User withdrawals from SCW |
+| `UserStrategyPending` | Pending strategy selections |
 
-### 1. Create D1 Database
+### Views (7 total)
 
-```bash
-wrangler d1 create lazaitrader-db
-```
+| View | Description |
+|------|-------------|
+| `vw_ActiveUserTradingConfigs` | Active trading configurations with user/pair details |
+| `vw_TradeSummaryByUserPair` | Aggregated trade statistics per user/pair |
+| `vw_LatestPricesByPair` | Most recent price for each trading pair |
+| `vw_UserBalances` | User balances with token details |
+| `vw_TradeDetails` | Trade records with metrics joined |
+| `vw_UserWithdrawalHistory` | User withdrawal history |
+| `vw_WithdrawalSummary` | Withdrawal summary with all details |
 
-This will output something like:
-```
-[[d1_databases]]
-binding = "DB"
-database_name = "lazaitrader-db"
-database_id = "xxxx-xxxx-xxxx-xxxx"
-```
+## Usage
 
-### 2. Update wrangler.toml
-
-Add the D1 binding to your `cloudflare/lt_tg/wrangler.toml`:
-
-```toml
-[[d1_databases]]
-binding = "DB"
-database_name = "lazaitrader-db"
-database_id = "your-database-id-here"
-```
-
-### 3. Initialize Schema
-
-Run the schema to create tables and seed initial data:
+### Query Current Schema from Production
 
 ```bash
-wrangler d1 execute lazaitrader-db --file=cloudflare/database/schema.sql
+npx wrangler d1 execute <DATABASE_NAME> --command="SELECT type, name, sql FROM sqlite_master WHERE type IN ('table', 'index', 'view') AND name NOT LIKE 'sqlite_%' ORDER BY type, name;"
 ```
 
-### 4. Verify Setup
-
-Check if tables were created:
+### Apply Schema to New Database
 
 ```bash
-wrangler d1 execute lazaitrader-db --command="SELECT name FROM sqlite_master WHERE type='table'"
+npx wrangler d1 execute <DATABASE_NAME> --file=cloudflare/database/schema.sql
 ```
 
-## Database Schema Details
+## Key Schema Details
 
-### Core Tables
+### Trades Table
 
-#### Users
-Stores Telegram user information and wallet addresses.
-- `UserID` - Telegram user ID (Primary Key)
-- `UserWallet` - User's EOA wallet address
-- `SCWAddress` - Smart Contract Wallet address
-- `TelegramChatID` - Telegram chat ID
-- `Username` - Telegram username
+The `Trades` table tracks all executed trades with the following key columns:
 
-#### Chains
-Blockchain network information.
-- Pre-populated with:
-  - Metis Andromeda (1088)
-  - Hyperion Testnet (133717)
-  - Zircuit (48900)
+| Column | Type | Description |
+|--------|------|-------------|
+| `TradeID` | INTEGER | Primary key |
+| `PairID` | INTEGER | Trading pair reference |
+| `UserID` | INTEGER | User who executed the trade |
+| `PriceID` | INTEGER | Price at time of trade |
+| `Action` | TEXT | 'BUY' or 'SELL' |
+| `TokenSent` | INTEGER | Token ID that was sold/sent |
+| `TokenReceived` | INTEGER | Token ID that was bought/received |
+| `QuantitySent` | REAL | Actual quantity of TokenSent that was sold |
+| `QuantityReceived` | REAL | Actual quantity of TokenReceived that was received |
+| `TxHash` | TEXT | Transaction hash |
+| `CreatedAt` | TEXT | Trade timestamp |
 
-#### Tokens
-Token details per chain.
-- Pre-populated with testnet tokens:
-  - tgMetis
-  - tgUSDC
-  - tgETH
+**Examples:**
 
-#### TradingPairs
-Available trading pairs per chain.
-- Links BaseToken and QuoteToken
-- Contains DEX and price source information
+SELL 1 ETH for 3000 USDC:
+- `Action`: SELL
+- `TokenSent`: ETH TokenID
+- `TokenReceived`: USDC TokenID
+- `QuantitySent`: 1.0
+- `QuantityReceived`: 3000.0
 
-#### UserTradingConfigs
-User-specific trading strategies.
-- Trade percentage
-- Trigger percentage
-- Max/Min amounts
-- Multiplier
+BUY 1 ETH with 3000 USDC:
+- `Action`: BUY
+- `TokenSent`: USDC TokenID
+- `TokenReceived`: ETH TokenID
+- `QuantitySent`: 3000.0
+- `QuantityReceived`: 1.0
 
-### Transaction Tables
+## Migrations
 
-#### PriceHistory
-Historical price data for trading pairs.
+Migration scripts are located in `cloudflare/database/migrations/`.
 
-#### Trades
-Individual trade records with transaction hashes.
+### Applying Migrations
 
-#### TradeMetrics
-Additional metrics per trade (consecutive counts, etc.).
-
-#### UserBalances
-Current token balances per user.
-
-#### Suggestions
-AI-generated trading suggestions for users.
-
-## Usage in Worker
-
-### Accessing the Database
-
-In your worker code, access D1 via the binding:
-
-```javascript
-export default {
-  async fetch(request, env) {
-    // env.DB is your D1 database
-    const result = await env.DB.prepare(
-      "SELECT * FROM Users WHERE TelegramChatID = ?"
-    ).bind(chatId).first();
-
-    return new Response(JSON.stringify(result));
-  }
-};
-```
-
-### Common Queries
-
-#### Get User by Telegram Chat ID
-```javascript
-const user = await env.DB.prepare(
-  "SELECT * FROM Users WHERE TelegramChatID = ?"
-).bind(chatId).first();
-```
-
-#### Insert New User
-```javascript
-await env.DB.prepare(
-  `INSERT INTO Users (UserID, UserWallet, SCWAddress, TelegramChatID, Username, RegisteredAt)
-   VALUES (?, ?, ?, ?, ?, datetime('now'))`
-).bind(userId, userWallet, scwAddress, chatId, username).run();
-```
-
-#### Get Active Trading Configs
-```javascript
-const configs = await env.DB.prepare(
-  "SELECT * FROM vw_ActiveUserTradingConfigs WHERE UserID = ?"
-).bind(userId).all();
-```
-
-#### Get Available Trading Pairs
-```javascript
-const pairs = await env.DB.prepare(
-  `SELECT tp.*, bt.Symbol as BaseToken, qt.Symbol as QuoteToken
-   FROM TradingPairs tp
-   JOIN Tokens bt ON tp.BaseTokenID = bt.TokenID
-   JOIN Tokens qt ON tp.QuoteTokenID = qt.TokenID
-   WHERE tp.IsActive = 1 AND tp.ChainID = ?`
-).bind(chainId).all();
-```
-
-## Local Development
-
-### Test Queries Locally
+To apply a migration file:
 
 ```bash
-wrangler d1 execute lazaitrader-db --command="SELECT * FROM Users"
+npx wrangler d1 execute <DATABASE_NAME> --file=cloudflare/database/migrations/<MIGRATION_FILE>.sql
 ```
 
-### Import Data
+To run a single command:
 
 ```bash
-wrangler d1 execute lazaitrader-db --file=data.sql
+npx wrangler d1 execute <DATABASE_NAME> --command="<SQL_STATEMENT>"
 ```
 
-### Backup Database
+After applying migrations, update `schema.sql` to reflect the current production state.
 
-```bash
-wrangler d1 export lazaitrader-db --output=backup.sql
-```
+### Recent Migrations
 
-## Best Practices
-
-1. **Use Prepared Statements**: Always use `.prepare()` with `.bind()` to prevent SQL injection
-2. **Index Usage**: The schema includes optimized indexes for common queries
-3. **Batch Operations**: Use D1 batch API for multiple inserts/updates
-4. **Error Handling**: Always wrap D1 calls in try-catch blocks
-5. **Constraints**: The schema enforces data integrity via foreign keys and checks
-
-## Migration Strategy
-
-For schema changes:
-
-1. Create a new migration file: `migration_001.sql`
-2. Test locally with `wrangler d1 execute`
-3. Apply to production database
-4. Update `schema.sql` to reflect current state
-
-## Resources
-
-- [Cloudflare D1 Docs](https://developers.cloudflare.com/d1/)
-- [D1 Client API](https://developers.cloudflare.com/d1/platform/client-api/)
-- [Wrangler D1 Commands](https://developers.cloudflare.com/workers/wrangler/commands/#d1)
+- `001_add_token_columns_to_trades.sql` - Added `TokenSent` and `TokenReceived` columns to clarify which tokens were exchanged

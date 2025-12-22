@@ -1,13 +1,16 @@
 /**
  * LazaiTrader Trading Queue Worker (Producer)
- * 
+ *
  * This worker runs on a schedule (every 1 minute) to:
  * 1. Fetch current prices for all active trading pairs
  * 2. Check user trading configs against price movements
  * 3. Send trade messages to Cloudflare Queue when triggers are hit
- * 
+ *
  * The consumer worker (lt-trading-execution) will pick up messages from the queue
  */
+
+import { parsePrice } from '../shared/priceParser.js';
+import tokenMappings from '../shared/tokenMappings.json';
 
 // ============================================
 // PRICE FETCHING UTILITIES
@@ -16,6 +19,7 @@
 /**
  * Normalize base pair symbol from trading pair name
  * Handles cases like "tgETH-tgUSDC" -> "ETH-USDC"
+ * Uses shared tokenMappings.json for consistent symbol normalization
  */
 function normalizeBasePairSymbol(pairName) {
   // Remove common testnet prefixes
@@ -25,63 +29,10 @@ function normalizeBasePairSymbol(pairName) {
     .replace(/^t/gi, '')
     .replace(/-t/gi, '-')
     .toUpperCase();
-  
-  // Common symbol mappings
-  const symbolMap = {
-    'GETH': 'ETH',
-    'GUSDC': 'USDC',
-    'GBTC': 'BTC',
-    'WETH': 'ETH',
-    'WBTC': 'BTC',
-  };
-  
-  const parts = normalized.split('-');
-  const mappedParts = parts.map(p => symbolMap[p] || p);
-  return mappedParts.join('-');
-}
 
-/**
- * Parse price from various API response formats
- */
-function parsePrice(provider, data) {
-  try {
-    switch (provider.toLowerCase()) {
-      case 'binance':
-        return parseFloat(data.price);
-      
-      case 'coinbase':
-        return parseFloat(data.data?.amount);
-      
-      case 'coingecko':
-        // CoinGecko returns { ethereum: { usd: 3000 } } format
-        const keys = Object.keys(data);
-        if (keys.length > 0) {
-          const tokenData = data[keys[0]];
-          const priceKeys = Object.keys(tokenData);
-          if (priceKeys.length > 0) {
-            return parseFloat(tokenData[priceKeys[0]]);
-          }
-        }
-        return null;
-      
-      case 'dexscreener':
-        // DEXScreener returns pairs array
-        if (data.pairs && data.pairs.length > 0) {
-          return parseFloat(data.pairs[0].priceUsd);
-        }
-        return null;
-      
-      default:
-        // Try common formats
-        if (data.price) return parseFloat(data.price);
-        if (data.last) return parseFloat(data.last);
-        if (data.result?.price) return parseFloat(data.result.price);
-        return null;
-    }
-  } catch (e) {
-    console.error(`Failed to parse price from ${provider}:`, e);
-    return null;
-  }
+  const parts = normalized.split('-');
+  const mappedParts = parts.map(p => tokenMappings.symbolMap[p] || p);
+  return mappedParts.join('-');
 }
 
 /**
@@ -91,7 +42,7 @@ async function fetchPriceFromEndpoint(endpoint) {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-    
+
     const response = await fetch(endpoint.EndpointURL, {
       signal: controller.signal,
       headers: {
@@ -99,20 +50,23 @@ async function fetchPriceFromEndpoint(endpoint) {
         'User-Agent': 'LazaiTrader/1.0'
       }
     });
-    
+
     clearTimeout(timeoutId);
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    
+
     const data = await response.json();
-    const price = parsePrice(endpoint.Provider, data);
-    
+
+    // Use ResponseSchema if available, otherwise fall back to provider-based parsing
+    const schemaOrProvider = endpoint.ResponseSchema || endpoint.Provider;
+    const price = parsePrice(data, schemaOrProvider);
+
     if (price === null || isNaN(price) || price <= 0) {
       throw new Error('Invalid price value');
     }
-    
+
     return { success: true, price, provider: endpoint.Provider };
   } catch (error) {
     return { success: false, error: error.message, provider: endpoint.Provider };
@@ -280,29 +234,39 @@ async function getLastTrade(db, userId, pairId) {
  * Create a reference trade for new users (0 quantity, establishes price baseline)
  */
 async function createReferenceTrade(db, userId, pairId, currentPrice) {
+  // First, get the pair details to know which tokens are involved
+  const pair = await db.prepare(`
+    SELECT BaseTokenID, QuoteTokenID FROM TradingPairs WHERE PairID = ?
+  `).bind(pairId).first();
+
+  if (!pair) {
+    throw new Error(`Failed to find trading pair ${pairId}`);
+  }
+
   // First, insert into PriceHistory to get a PriceID
   const priceResult = await db.prepare(`
     INSERT INTO PriceHistory (PairID, Price, CreatedAt)
     VALUES (?, ?, datetime('now'))
   `).bind(pairId, currentPrice).run();
-  
+
   const priceId = priceResult.meta?.last_row_id;
-  
+
   if (!priceId) {
     throw new Error('Failed to insert price history for reference trade');
   }
-  
+
   // Generate a unique placeholder TxHash for the reference trade
   const refTxHash = `REF-${userId}-${pairId}-${Date.now()}`;
-  
+
   // Insert reference trade with 0 quantities
   // Using 'BUY' as action to satisfy CHECK constraint (BUY/SELL only)
   // QuantitySent = 0 indicates this is a reference/init trade
+  // For a BUY action, we'd be sending quote token and receiving base token
   await db.prepare(`
-    INSERT INTO Trades (PairID, UserID, PriceID, Action, QuantitySent, QuantityReceived, TxHash, CreatedAt)
-    VALUES (?, ?, ?, 'BUY', 0, 0, ?, datetime('now'))
-  `).bind(pairId, userId, priceId, refTxHash).run();
-  
+    INSERT INTO Trades (PairID, UserID, PriceID, Action, TokenSent, TokenReceived, QuantitySent, QuantityReceived, TxHash, CreatedAt)
+    VALUES (?, ?, ?, 'BUY', ?, ?, 0, 0, ?, datetime('now'))
+  `).bind(pairId, userId, priceId, pair.QuoteTokenID, pair.BaseTokenID, refTxHash).run();
+
   return { priceId, txHash: refTxHash };
 }
 
@@ -347,13 +311,15 @@ async function getFullConfigDetails(db, config) {
     SELECT * FROM Chains WHERE ChainID = ?
   `).bind(config.ChainID).first();
   
-  // Get pair details with tokens
+  // Get pair details with tokens (including DEXType for routing to correct handler)
   const pairDetails = await db.prepare(`
-    SELECT 
+    SELECT
       tp.*,
+      bt.TokenID AS BaseTokenID,
       bt.Symbol AS BaseSymbol,
       bt.TokenAddress AS BaseTokenAddress,
       bt.Decimals AS BaseDecimals,
+      qt.TokenID AS QuoteTokenID,
       qt.Symbol AS QuoteSymbol,
       qt.TokenAddress AS QuoteTokenAddress,
       qt.Decimals AS QuoteDecimals
@@ -372,7 +338,7 @@ async function getFullConfigDetails(db, config) {
 async function processConfigs(db, queue) {
   // Get all active user trading configs with full details
   const configs = await db.prepare(`
-    SELECT 
+    SELECT
       utc.ConfigID,
       utc.UserID,
       utc.PairID,
@@ -386,7 +352,8 @@ async function processConfigs(db, queue) {
       u.UserWallet,
       tp.PairName,
       tp.ChainID,
-      tp.DEXAddress
+      tp.DEXAddress,
+      tp.DEXType
     FROM UserTradingConfigs utc
     INNER JOIN Users u ON utc.UserID = u.UserID
     INNER JOIN TradingPairs tp ON utc.PairID = tp.PairID
@@ -491,12 +458,15 @@ async function processConfigs(db, queue) {
       pair: {
         pairName: pairDetails.PairName,
         dexAddress: pairDetails.DEXAddress,
+        dexType: pairDetails.DEXType || 'LazaiSwap', // Default for backwards compatibility
         baseToken: {
+          tokenId: pairDetails.BaseTokenID,
           symbol: pairDetails.BaseSymbol,
           address: pairDetails.BaseTokenAddress,
           decimals: pairDetails.BaseDecimals
         },
         quoteToken: {
+          tokenId: pairDetails.QuoteTokenID,
           symbol: pairDetails.QuoteSymbol,
           address: pairDetails.QuoteTokenAddress,
           decimals: pairDetails.QuoteDecimals

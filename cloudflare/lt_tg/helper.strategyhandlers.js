@@ -37,9 +37,9 @@ export async function handleConfig(chatId, userId, env) {
       return;
     }
 
-    // Get all active trading pairs
+    // Get all active trading pairs from active chains
     const pairs = await env.DB.prepare(
-      `SELECT 
+      `SELECT
         tp.PairID,
         tp.PairName,
         tp.ChainID,
@@ -50,7 +50,7 @@ export async function handleConfig(chatId, userId, env) {
       INNER JOIN Chains c ON tp.ChainID = c.ChainID
       INNER JOIN Tokens bt ON tp.BaseTokenID = bt.TokenID
       INNER JOIN Tokens qt ON tp.QuoteTokenID = qt.TokenID
-      WHERE tp.IsActive = 1
+      WHERE tp.IsActive = 1 AND c.IsActive = 1
       ORDER BY c.ChainName, tp.PairName`
     ).all();
 
@@ -61,12 +61,11 @@ export async function handleConfig(chatId, userId, env) {
       return;
     }
 
-    // Get user balances from UserBalances table
+    // Get user balances from UserBalances table (latest balance per token)
     const userBalances = await env.DB.prepare(
-      `SELECT t.Symbol, ub.Balance 
-       FROM UserBalances ub
-       INNER JOIN Tokens t ON ub.TokenID = t.TokenID
-       WHERE ub.UserID = ? AND ub.Balance > 0`
+      `SELECT TokenSymbol AS Symbol, Balance
+      FROM vw_UserBalancesUSDC
+      WHERE UserID = ? AND Balance > 0`
     ).bind(userId).all();
 
     const balanceMap = {};
@@ -440,7 +439,7 @@ export async function handleViewConfig(chatId, userId, env) {
     console.log(`[handleViewConfig] User ${userId} viewing configs`);
 
     const configs = await env.DB.prepare(
-      `SELECT 
+      `SELECT
         utc.ConfigID,
         tp.PairID,
         bt.Symbol AS BaseSymbol,
@@ -455,7 +454,7 @@ export async function handleViewConfig(chatId, userId, env) {
       INNER JOIN Chains c ON tp.ChainID = c.ChainID
       INNER JOIN Tokens bt ON tp.BaseTokenID = bt.TokenID
       INNER JOIN Tokens qt ON tp.QuoteTokenID = qt.TokenID
-      WHERE utc.UserID = ?
+      WHERE utc.UserID = ? AND c.IsActive = 1
       ORDER BY c.ChainName, tp.PairName`
     ).bind(userId).all();
 
@@ -496,7 +495,7 @@ export async function handleDeleteConfig(chatId, userId, env) {
     console.log(`[handleDeleteConfig] User ${userId} initiating delete`);
 
     const configs = await env.DB.prepare(
-      `SELECT 
+      `SELECT
         utc.ConfigID,
         bt.Symbol AS BaseSymbol,
         qt.Symbol AS QuoteSymbol,
@@ -506,7 +505,7 @@ export async function handleDeleteConfig(chatId, userId, env) {
       INNER JOIN Chains c ON tp.ChainID = c.ChainID
       INNER JOIN Tokens bt ON tp.BaseTokenID = bt.TokenID
       INNER JOIN Tokens qt ON tp.QuoteTokenID = qt.TokenID
-      WHERE utc.UserID = ?
+      WHERE utc.UserID = ? AND c.IsActive = 1
       ORDER BY c.ChainName, tp.PairName`
     ).bind(userId).all();
 

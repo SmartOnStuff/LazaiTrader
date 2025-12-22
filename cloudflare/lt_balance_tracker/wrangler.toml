@@ -1,0 +1,78 @@
+# ============================================
+# LazaiTrader Balance Tracker Worker
+# ============================================
+name = "lt-balance-tracker"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Account configuration (update with your account ID)
+# account_id = "your-account-id"
+
+# ============================================
+# D1 Database Binding
+# ============================================
+[[d1_databases]]
+binding = "DB"
+database_name = "lazaitrader"
+database_id = "64791295-2134-4306-a6e9-4a45619aab05"
+
+# ============================================
+# Scheduled Triggers (Cron)
+# ============================================
+# Runs every 5 minutes to track user balances and detect deposits
+[triggers]
+crons = ["0 */4 * * *"]
+
+# ============================================
+# Environment Variables
+# ============================================
+[vars]
+ENVIRONMENT = "production"
+
+# ============================================
+# Secrets (set via wrangler secret put)
+# ============================================
+# Run these commands to set secrets:
+#   wrangler secret put WORKER_SECRET
+#
+# WORKER_SECRET = "..." (for manual trigger auth)
+
+# ============================================
+# Development Configuration
+# ============================================
+[env.dev]
+name = "lt-balance-tracker-dev"
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "lazaitrader"
+database_id = "64791295-2134-4306-a6e9-4a45619aab05"
+
+[env.dev.triggers]
+crons = ["0 0 * * *"]  # Once a day in dev to avoid excessive polling
+
+# ============================================
+# Staging Configuration
+# ============================================
+[env.staging]
+name = "lt-balance-tracker-staging"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "lazaitrader"
+database_id = "64791295-2134-4306-a6e9-4a45619aab05"
+
+[env.staging.triggers]
+crons = ["*/15 * * * *"]  # Every 15 minutes in staging
+
+# ============================================
+# Observability
+# ============================================
+[observability]
+enabled = true

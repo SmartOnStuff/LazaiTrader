@@ -48,31 +48,136 @@ async function handleStart(chatId, userId, username, env) {
     ).bind(userId).first();
 
     if (existingUser) {
-      // User already registered - welcome back
-      const message = {
-        chat_id: chatId,
-        text: `👋 *Welcome back, ${username || 'trader'}!*\n\n` +
-          `Your account is active and ready to trade!\n\n` +
-          `📋 *Your Details:*\n` +
-          `💼 Your Wallet: \`${existingUser.UserWallet}\`\n` +
-          (existingUser.SCWAddress ? `🔐 Trading Wallet: \`${existingUser.SCWAddress}\`\n\n` : '\n') +
-          `*Quick Actions:*\n` +
-          `💰 /balance - Check your funds\n` +
-          `📈 /chart - See your performance\n` +
-          `⚙️ /config - Set up trading strategy\n` +
-          `💸 /withdraw - Cash out profits\n\n` +
-          `💡 Ready to trade? Your AI is watching the markets 24/7!`,
-        parse_mode: 'Markdown'
-      };
+      // User already registered - check if they have SCW
+      if (existingUser.SCWAddress) {
+        // User has SCW - welcome back
+        const message = {
+          chat_id: chatId,
+          text: `👋 *Welcome back, ${username || 'trader'}!*\n\n` +
+            `Your account is active and ready to trade!\n\n` +
+            `📋 *Your Details:*\n` +
+            `💼 Your Wallet: \`${existingUser.UserWallet}\`\n` +
+            `🔐 Trading Wallet: \`${existingUser.SCWAddress}\`\n\n` +
+            `*Quick Actions:*\n` +
+            `💰 /balance - Check your funds\n` +
+            `📈 /chart - See your performance\n` +
+            `⚙️ /config - Set up trading strategy\n` +
+            `💸 /withdraw - Cash out profits\n\n` +
+            `💡 Ready to trade? Your AI is watching the markets 24/7!`,
+          parse_mode: 'Markdown'
+        };
 
-      await sendMessage(env.BOT_TOKEN, message);
+        await sendMessage(env.BOT_TOKEN, message);
 
-      return new Response(JSON.stringify({
-        success: true,
-        registered: true
-      }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
+        return new Response(JSON.stringify({
+          success: true,
+          registered: true,
+          hasSCW: true
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } else {
+        // User exists but no SCW - deploy it now
+        console.log(`[handleStart] User ${userId} exists but has no SCW, deploying...`);
+
+        const processingMessage = {
+          chat_id: chatId,
+          text: `⏳ *Setting up your Smart Contract Wallet...*\n\n` +
+            `🔧 Deploying your trading wallet on all chains\n` +
+            `⚡ This may take 30-60 seconds\n\n` +
+            `Please wait... ✨`,
+          parse_mode: 'Markdown'
+        };
+
+        await sendMessage(env.BOT_TOKEN, processingMessage);
+
+        // Deploy SCW on all supported chains
+        const depositResult = await callDepositWorker(userId, existingUser.UserWallet, env);
+
+        if (!depositResult.success) {
+          console.error(`[handleStart] SCW deployment failed:`, depositResult.error);
+          const errorMessage = {
+            chat_id: chatId,
+            text: `⚠️ *Setup Incomplete*\n\n` +
+              `We encountered an issue deploying your Smart Contract Wallet.\n\n` +
+              `*What to do:*\n` +
+              `Please try /start again or contact support: @LazaiTraderDev\n\n` +
+              `Error: ${depositResult.error || 'Unknown error'}`,
+            parse_mode: 'Markdown'
+          };
+          await sendMessage(env.BOT_TOKEN, errorMessage);
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'SCW deployment failed',
+            errorCode: depositResult.errorCode
+          }), {
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+        const scwAddress = depositResult.scwAddress;
+        console.log(`[handleStart] SCW deployed successfully: ${scwAddress}`);
+
+        // Analyze deployment results
+        const deployments = depositResult.deployments || [];
+        const successfulChains = deployments.filter(d => d.status === 'deployed' || d.status === 'already_exists');
+        const failedChains = deployments.filter(d => d.status === 'failed');
+
+        console.log(`[handleStart] Deployment summary: ${successfulChains.length} successful, ${failedChains.length} failed`);
+
+        // Build deployment status message
+        let deploymentStatus = '';
+        if (failedChains.length > 0) {
+          deploymentStatus = `\n⚠️ *Deployment Status:*\n`;
+          deploymentStatus += `✅ Deployed on ${successfulChains.length} chains\n`;
+          deploymentStatus += `❌ Failed on ${failedChains.length} chains: ${failedChains.map(c => c.chainName).join(', ')}\n\n`;
+          deploymentStatus += `_Failed chains will be retried. Please contact support if issues persist._\n\n`;
+        } else {
+          deploymentStatus = `\n✅ *Successfully deployed on all ${successfulChains.length} chains!*\n\n`;
+        }
+
+        // Get chains info for display (only successful ones)
+        let chainInfo = '';
+        for (const deployment of successfulChains) {
+          const tokens = await env.DB.prepare(
+            'SELECT Symbol FROM Tokens WHERE ChainID = ? AND IsActive = 1 ORDER BY Symbol'
+          ).bind(deployment.chainId).all();
+
+          const tokenList = tokens?.results?.map(t => t.Symbol).join(', ') || '(Loading...)';
+          chainInfo += `\n🔗 *${deployment.chainName}:* ${tokenList}`;
+        }
+
+        // Send success message
+        const successMessage = {
+          chat_id: chatId,
+          text: `✅ *Smart Contract Wallet Deployed!*\n\n` +
+            `Your trading wallet is now ready!\n\n` +
+            `📋 *Your Details:*\n` +
+            `💼 Your Wallet (EOA): \`${existingUser.UserWallet}\`\n` +
+            `🔐 Trading Wallet (SCW): \`${scwAddress}\`\n` +
+            deploymentStatus +
+            `💰 *Available Networks & Tokens:*${chainInfo}\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━\n\n` +
+            `*Quick Commands:*\n` +
+            `/deposit - View your deposit address\n` +
+            `/config - Set up your trading strategy\n` +
+            `/balance - Check your funds\n` +
+            `/help - See all commands\n\n` +
+            `Let's make some profits! 💎`,
+          parse_mode: 'Markdown'
+        };
+
+        await sendMessage(env.BOT_TOKEN, successMessage);
+
+        return new Response(JSON.stringify({
+          success: true,
+          registered: true,
+          scwDeployed: true,
+          scwAddress: scwAddress
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
     }
 
     // New user - show intro and request wallet
@@ -201,10 +306,11 @@ async function handleWalletVerification(chatId, userId, username, walletAddress,
       chat_id: chatId,
       text: `⏳ *Setting up your account...*\n\n` +
         `🔧 Creating your secure trading system\n` +
-        `⚡ This takes about 10-30 seconds\n\n` +
+        `⚡ This may take 30-60 seconds\n\n` +
         `*What we're doing:*\n` +
         `• Verifying your wallet address\n` +
         `• Setting up your profile\n` +
+        `• Deploying Smart Contract Wallets on all chains\n` +
         `• Preparing your trading dashboard\n\n` +
         `Please wait... ✨`,
       parse_mode: 'Markdown'
@@ -224,29 +330,95 @@ async function handleWalletVerification(chatId, userId, username, walletAddress,
       'DELETE FROM RegistrationSessions WHERE UserID = ?'
     ).bind(userId).run();
 
-    // Send success message
+    // Deploy SCW on all supported chains
+    console.log(`[handleWalletVerification] Deploying SCW for user ${userId}...`);
+    const depositResult = await callDepositWorker(userId, walletAddress, env);
+
+    if (!depositResult.success) {
+      console.error(`[handleWalletVerification] SCW deployment failed:`, depositResult.error);
+      // Registration still succeeded, but SCW deployment failed
+      const errorMessage = {
+        chat_id: chatId,
+        text: `⚠️ *Account Created, but Setup Incomplete*\n\n` +
+          `Your account was created successfully, but we encountered an issue deploying your Smart Contract Wallet.\n\n` +
+          `*What this means:*\n` +
+          `• Your account is registered\n` +
+          `• But you can't trade yet\n\n` +
+          `*What to do:*\n` +
+          `Please contact support: @LazaiTraderDev\n\n` +
+          `Error: ${depositResult.error || 'Unknown error'}`,
+        parse_mode: 'Markdown'
+      };
+      await sendMessage(env.BOT_TOKEN, errorMessage);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'SCW deployment failed',
+        errorCode: depositResult.errorCode
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const scwAddress = depositResult.scwAddress;
+    console.log(`[handleWalletVerification] SCW deployed successfully: ${scwAddress}`);
+
+    // Analyze deployment results
+    const deployments = depositResult.deployments || [];
+    const successfulChains = deployments.filter(d => d.status === 'deployed' || d.status === 'already_exists');
+    const failedChains = deployments.filter(d => d.status === 'failed');
+
+    console.log(`[handleWalletVerification] Deployment summary: ${successfulChains.length} successful, ${failedChains.length} failed`);
+
+    // Build deployment status message
+    let deploymentStatus = '';
+    if (failedChains.length > 0) {
+      deploymentStatus = `\n⚠️ *Deployment Status:*\n`;
+      deploymentStatus += `✅ Deployed on ${successfulChains.length} chains\n`;
+      deploymentStatus += `❌ Failed on ${failedChains.length} chains: ${failedChains.map(c => c.chainName).join(', ')}\n\n`;
+      deploymentStatus += `_Failed chains will be retried. Please contact support if issues persist._\n\n`;
+    } else {
+      deploymentStatus = `\n✅ *Successfully deployed on all ${successfulChains.length} chains!*\n\n`;
+    }
+
+    // Get chains info for display (only successful ones)
+    let chainInfo = '';
+    for (const deployment of successfulChains) {
+      const tokens = await env.DB.prepare(
+        'SELECT Symbol FROM Tokens WHERE ChainID = ? AND IsActive = 1 ORDER BY Symbol'
+      ).bind(deployment.chainId).all();
+
+      const tokenList = tokens?.results?.map(t => t.Symbol).join(', ') || '(Loading...)';
+      chainInfo += `\n🔗 *${deployment.chainName}:* ${tokenList}`;
+    }
+
+    // Send success message with SCW info
     const successMessage = {
       chat_id: chatId,
       text: `🎉 *You're all set!*\n\n` +
         `Your LazaiTrader account is ready!\n\n` +
         `📋 *Your Details:*\n` +
-        `💼 Wallet: \`${walletAddress}\`\n` +
-        `👤 Telegram: @${username || 'N/A'}\n\n` +
+        `💼 Your Wallet (EOA): \`${walletAddress}\`\n` +
+        `🔐 Trading Wallet (SCW): \`${scwAddress}\`\n` +
+        `👤 Telegram: @${username || 'N/A'}\n` +
+        deploymentStatus +
+        `💰 *Available Networks & Tokens:*${chainInfo}\n\n` +
         `━━━━━━━━━━━━━━━━━━━━\n\n` +
         `🚀 *Next Steps:*\n\n` +
-        `*1️⃣ Set Your Strategy* ⚙️\n` +
+        `*1️⃣ Fund Your Trading Wallet* 💰\n` +
+        `Use /deposit to see your deposit address\n` +
+        `Send tokens from your exchange or wallet\n` +
+        `Only you can withdraw from it!\n\n` +
+        `*2️⃣ Set Your Strategy* ⚙️\n` +
         `Use /config to tell me how you want to trade:\n` +
         `• Choose trading pairs (e.g., ETH-USDC)\n` +
         `• Set your risk level\n` +
         `• Define buy/sell triggers\n\n` +
-        `*2️⃣ Fund Your Trading Wallet* 💰\n` +
-        `We'll create a Smart Contract Wallet for you\n` +
-        `Only you can withdraw from it!\n\n` +
         `*3️⃣ Start Trading* 📈\n` +
-        `Once funded, I'll trade automatically 24/7\n` +
+        `Once funded and configured, I'll trade automatically 24/7\n` +
         `Check progress anytime with /balance or /chart\n\n` +
         `━━━━━━━━━━━━━━━━━━━━\n\n` +
         `*Quick Commands:*\n` +
+        `/deposit - View your deposit address\n` +
         `/config - Set up your first strategy\n` +
         `/balance - Check your funds\n` +
         `/help - See all commands\n\n` +
@@ -320,6 +492,32 @@ function validateEthereumAddress(address) {
   }
 
   return { valid: true };
+}
+
+/**
+ * Call deposit worker for SCW deployment
+ */
+async function callDepositWorker(userId, userWallet, env) {
+  try {
+    const response = await env.DEPOSIT_WORKER.fetch('https://internal/scw-deploy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId,
+        userWallet: userWallet
+      })
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error calling deposit worker:', error);
+    return {
+      success: false,
+      error: error.message,
+      errorCode: 'WORKER_ERROR'
+    };
+  }
 }
 
 /**

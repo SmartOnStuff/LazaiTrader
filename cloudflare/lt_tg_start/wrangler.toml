@@ -12,6 +12,11 @@ binding = "DB"
 database_name = "lazaitrader"
 database_id = "64791295-2134-4306-a6e9-4a45619aab05"
 
+# Service Binding - Deposit Worker (for auto-deploying SCW on registration)
+[[services]]
+binding = "DEPOSIT_WORKER"
+service = "lt-tg-deposit"
+
 [env.production]
 # Production environment settings
 
