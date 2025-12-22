@@ -60,7 +60,7 @@ The bot monitors prices and executes trades automatically when your conditions a
 | Zircuit         | Coming Soon | -           |
 | Lazai           | Coming Soon | -           |
 | Base            | Planned     | -           |
-| Ethereum        |             |             |
+| Ethereum        | Planned     | -           |
 
 ***
 
