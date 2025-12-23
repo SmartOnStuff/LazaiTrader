@@ -84,7 +84,7 @@ Once you provide a valid address, registration is complete:
 Your Details:
 • Wallet: 0x742d35Cc...12345
 • User ID: 123456789
-• Registered: 2024-01-15
+• Registered: -01-15
 
 What's Next?
 1. /deposit - Get your trading wallet address

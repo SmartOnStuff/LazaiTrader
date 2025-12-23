@@ -28,7 +28,7 @@ Metis Andromeda:
 
 📊 Total Value: $2,200.00
 
-Last Updated: 2024-01-15 14:30:00 UTC
+Last Updated: -01-15 14:30:00 UTC
 ```
 
 ---

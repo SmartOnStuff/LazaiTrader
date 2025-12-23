@@ -1,6 +1,6 @@
 # LazaiTrader Restricted Jurisdictions
 
-**Last Updated: December 2024**
+**Last Updated: December **
 
 ---
 

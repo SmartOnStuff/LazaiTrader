@@ -24,8 +24,8 @@ The bot generates a visual chart and statistics:
 │ Total Trades       │ 25          │
 │ Buy Orders         │ 15          │
 │ Sell Orders        │ 10          │
-│ First Trade        │ Jan 1, 2024 │
-│ Last Trade         │ Jan 20, 2024│
+│ First Trade        │ Jan 1,  │
+│ Last Trade         │ Jan 20, │
 └────────────────────┴─────────────┘
 
 💰 Portfolio:

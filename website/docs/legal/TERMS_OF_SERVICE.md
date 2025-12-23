@@ -1,6 +1,6 @@
 # LazaiTrader Terms of Service
 
-**Last Updated: December 2024**
+**Last Updated: December **
 
 ---
 
