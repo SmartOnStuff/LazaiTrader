@@ -26,7 +26,7 @@ Strategy 1: WETH-m.USDC on Metis
 │ Min/Max            │ $10 / $500  │
 │ Multiplier         │ 1.5x        │
 │ Status             │ ✅ Active    │
-│ Created            │ Jan 15, 2024│
+│ Created            │ Jan 15, 2025│
 └────────────────────┴─────────────┘
 
 Strategy 2: WMetis-m.USDC on Metis
@@ -36,7 +36,7 @@ Strategy 2: WMetis-m.USDC on Metis
 │ Min/Max            │ $25 / $300  │
 │ Multiplier         │ 1.2x        │
 │ Status             │ ✅ Active    │
-│ Created            │ Jan 18, 2024│
+│ Created            │ Jan 18, 2025│
 └────────────────────┴─────────────┘
 
 Total: 2 active strategies

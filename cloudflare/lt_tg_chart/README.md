@@ -47,8 +47,8 @@ Success:
     "currentPortfolioUSDC": 1150.0,
     "pnlAbsolute": 350.0,
     "pnlPercentage": 35.0,
-    "firstTradeDate": "2024-01-01T10:00:00Z",
-    "lastTradeDate": "2024-01-31T15:30:00Z",
+    "firstTradeDate": "2025-01-01T10:00:00Z",
+    "lastTradeDate": "2025-01-31T15:30:00Z",
     "tokensTraded": ["ETH", "BTC", "METIS"]
   },
   "tradeCount": 25,
