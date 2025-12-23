@@ -21,7 +21,7 @@ You don't need to install any apps or create new accounts beyond what you alread
 ## Step 1: Start the Bot
 
 1. Open Telegram
-2. Search for **@LazaiTraderBot** or [click here](https://t.me/LazaiTraderBot)
+2. Search for **@LazaiTrader_bot** or [click here](https://t.me/LazaiTrader_bot)
 3. Send the `/start` command
 
 The bot will greet you and ask for your wallet address.

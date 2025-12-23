@@ -153,7 +153,7 @@ Based on early users:
 
 Ready to try current features?
 
-1. **Register:** Send `/start` to [@LazaiTraderBot](https://t.me/LazaiTraderBot)
+1. **Register:** Send `/start` to [@LazaiTrader_bot](https://t.me/LazaiTrader_bot)
 2. **Set up wallet:** Use `/deposit`
 3. **Fund:** Send tokens to your SCW
 4. **Configure:** Use `/config`

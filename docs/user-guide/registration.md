@@ -8,8 +8,8 @@ Getting started with LazaiTrader begins with a simple registration process throu
 
 ### Step 1: Find the Bot
 
-Open Telegram and search for **@LazaiTraderBot**, or use this direct link:
-- [t.me/LazaiTraderBot](https://t.me/LazaiTraderBot)
+Open Telegram and search for **@LazaiTrader_bot**, or use this direct link:
+- [t.me/LazaiTrader_bot](https://t.me/LazaiTrader_bot)
 
 ### Step 2: Send /start
 
