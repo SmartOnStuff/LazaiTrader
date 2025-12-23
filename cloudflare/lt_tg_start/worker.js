@@ -197,10 +197,10 @@ async function handleStart(chatId, userId, username, env) {
         `• LazaiTrader is *non-custodial* - you control your funds\n` +
         `• Service is *not available* in restricted jurisdictions (US, sanctioned countries)\n\n` +
         `📖 *Full Legal Documentation:*\n` +
-        `[Terms of Service](https://lazaitrader-1.gitbook.io/lazaitrader-docs/legal/terms_of_service)\n` +
-        `[Disclaimer](https://lazaitrader-1.gitbook.io/lazaitrader-docs/legal/disclaimer)\n` +
-        `[Privacy Policy](https://lazaitrader-1.gitbook.io/lazaitrader-docs/legal/privacy_policy)\n` +
-        `[Restricted Jurisdictions](https://lazaitrader-1.gitbook.io/lazaitrader-docs/legal/restricted_jurisdictions)\n\n` +
+        `[Terms of Service](http://docs.lazaitrader.com/legal/TERMS_OF_SERVICE)\n` +
+        `[Disclaimer](http://docs.lazaitrader.com/legal/DISCLAIMER)\n` +
+        `[Privacy Policy](http://docs.lazaitrader.com/legal/PRIVACY_POLICY)\n` +
+        `[Restricted Jurisdictions](http://docs.lazaitrader.com/legal/RESTRICTED_JURISDICTIONS)\n\n` +
         `━━━━━━━━━━━━━━━━━━━━\n\n` +
         `By clicking "I Agree", you confirm that:\n` +
         `✅ You have read and understood the terms\n` +
@@ -212,7 +212,7 @@ async function handleStart(chatId, userId, username, env) {
       reply_markup: {
         inline_keyboard: [
           [{ text: '✅ I Agree to Terms & Conditions', callback_data: 'legal_agree' }],
-          [{ text: '📖 Read Full Terms', url: 'https://lazaitrader-1.gitbook.io/lazaitrader-docs/legal/terms_of_service' }]
+          [{ text: '📖 Read Full Terms', url: 'http://docs.lazaitrader.com/legal/TERMS_OF_SERVICE' }]
         ]
       }
     };
