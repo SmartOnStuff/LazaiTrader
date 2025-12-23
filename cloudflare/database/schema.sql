@@ -196,12 +196,14 @@ CREATE TABLE IF NOT EXISTS Suggestions (
 
 -- TABLE: RegistrationSessions
 -- User registration flow state
+-- State values: 'awaiting_legal', 'awaiting_wallet'
 CREATE TABLE IF NOT EXISTS RegistrationSessions (
     SessionID INTEGER PRIMARY KEY AUTOINCREMENT,
     UserID INTEGER NOT NULL UNIQUE,
     TelegramChatID TEXT NOT NULL,
     Username TEXT,
     State TEXT NOT NULL,
+    LegalAgreedAt TEXT,
     CreatedAt TEXT DEFAULT (datetime('now')),
     UpdatedAt TEXT DEFAULT (datetime('now'))
 );

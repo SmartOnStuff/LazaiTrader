@@ -280,6 +280,12 @@ async function handleCallbackQuery(callbackQuery, env) {
 
   // Handle different callback actions
 
+  // Legal agreement callback
+  if (data === 'legal_agree') {
+    await callWorker(env, 'START_WORKER', 'legal_agreed', chatId, userId, '', '');
+    return;
+  }
+
   // Strategy config: Step 1 - Pair selection
   if (data.startsWith('pair_')) {
     const pairId = parseInt(data.replace('pair_', ''));
@@ -640,8 +646,11 @@ async function displayDepositAddress(chatId, userWallet, scwAddress, env) {
 • EOA: \`${userWallet}\` (your external wallet)
 • SCW: \`${scwAddress}\` (your trading wallet)
 
+⚠️ *Reminder:* This is BETA software with unaudited smart contracts.
+📖 [Terms](https://lazaitrader-1.gitbook.io/lazaitrader-docs/legal/terms_of_service) • [Disclaimer](https://lazaitrader-1.gitbook.io/lazaitrader-docs/legal/disclaimer)
+
 ❓ *Need Help?*
-Use /help or contact: support@lazaitrader.com
+Use /help or contact: @LazaiTraderDev
 `;
 
   await sendMessage(chatId, env, {

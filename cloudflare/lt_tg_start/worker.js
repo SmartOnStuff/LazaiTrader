@@ -19,6 +19,8 @@ export default {
       switch (action) {
         case 'start':
           return await handleStart(chatId, userId, username, env);
+        case 'legal_agreed':
+          return await handleLegalAgreed(chatId, userId, username, env);
         case 'verify_wallet':
           return await handleWalletVerification(chatId, userId, username, text, env);
         default:
@@ -180,23 +182,114 @@ async function handleStart(chatId, userId, username, env) {
       }
     }
 
-    // New user - show intro and request wallet
-    const introMessage = {
+    // New user - show legal disclaimer first before registration
+    const legalMessage = {
       chat_id: chatId,
       text: `🎉 *Welcome to LazaiTrader!*\n\n` +
-        `I'm your AI-powered trading assistant. Here's how it works:\n\n` +
-        `🤖 *Automated Trading*\n` +
+        `I'm your AI-powered trading assistant.\n\n` +
+        `⚠️ *IMPORTANT: Please Read Before Continuing*\n\n` +
+        `Before you can use LazaiTrader, you must acknowledge our terms:\n\n` +
+        `📋 *Key Points:*\n` +
+        `• This is *BETA software* - bugs may occur\n` +
+        `• Smart contracts are *NOT audited*\n` +
+        `• Automated trading involves *significant risk*\n` +
+        `• You may *lose all deposited funds*\n` +
+        `• LazaiTrader is *non-custodial* - you control your funds\n` +
+        `• Service is *not available* in restricted jurisdictions (US, sanctioned countries)\n\n` +
+        `📖 *Full Legal Documentation:*\n` +
+        `[Terms of Service](https://lazaitrader-1.gitbook.io/lazaitrader-docs/legal/terms_of_service)\n` +
+        `[Disclaimer](https://lazaitrader-1.gitbook.io/lazaitrader-docs/legal/disclaimer)\n` +
+        `[Privacy Policy](https://lazaitrader-1.gitbook.io/lazaitrader-docs/legal/privacy_policy)\n` +
+        `[Restricted Jurisdictions](https://lazaitrader-1.gitbook.io/lazaitrader-docs/legal/restricted_jurisdictions)\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `By clicking "I Agree", you confirm that:\n` +
+        `✅ You have read and understood the terms\n` +
+        `✅ You are NOT in a restricted jurisdiction\n` +
+        `✅ You accept all risks of using this beta software\n` +
+        `✅ You will not hold LazaiTrader liable for any losses`,
+      parse_mode: 'Markdown',
+      disable_web_page_preview: true,
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '✅ I Agree to Terms & Conditions', callback_data: 'legal_agree' }],
+          [{ text: '📖 Read Full Terms', url: 'https://lazaitrader-1.gitbook.io/lazaitrader-docs/legal/terms_of_service' }]
+        ]
+      }
+    };
+
+    await sendMessage(env.BOT_TOKEN, legalMessage);
+
+    // Store pending registration state - awaiting legal agreement
+    await env.DB.prepare(
+      `INSERT OR REPLACE INTO RegistrationSessions (UserID, TelegramChatID, Username, State, CreatedAt)
+       VALUES (?, ?, ?, 'awaiting_legal', datetime('now'))`
+    ).bind(userId, chatId, username || '').run();
+
+    return new Response(JSON.stringify({
+      success: true,
+      registered: false,
+      awaiting: 'legal_agreement'
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('Error in handleStart:', error);
+    throw error;
+  }
+}
+
+/**
+ * Handle legal agreement - user clicked "I Agree"
+ * Now ask for their wallet address
+ */
+async function handleLegalAgreed(chatId, userId, username, env) {
+  try {
+    // Verify user is in the awaiting_legal state
+    const session = await env.DB.prepare(
+      'SELECT State FROM RegistrationSessions WHERE UserID = ?'
+    ).bind(userId).first();
+
+    if (!session || session.State !== 'awaiting_legal') {
+      // User might have already agreed or session expired
+      const message = {
+        chat_id: chatId,
+        text: `⚠️ Session expired or already completed.\n\nPlease use /start to begin again.`,
+        parse_mode: 'Markdown'
+      };
+      await sendMessage(env.BOT_TOKEN, message);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Invalid session state'
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Record legal agreement timestamp
+    const agreedAt = new Date().toISOString();
+
+    // Update session to awaiting_wallet and record agreement
+    await env.DB.prepare(
+      `UPDATE RegistrationSessions
+       SET State = 'awaiting_wallet', LegalAgreedAt = ?
+       WHERE UserID = ?`
+    ).bind(agreedAt, userId).run();
+
+    // Now ask for wallet address
+    const walletMessage = {
+      chat_id: chatId,
+      text: `✅ *Terms Accepted!*\n\n` +
+        `Thank you for accepting our terms. Now let's set up your account!\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `🤖 *How LazaiTrader Works:*\n\n` +
         `• I trade for you 24/7 based on your strategy\n` +
         `• You stay in control - set your own rules\n` +
         `• No manual trading needed\n\n` +
-        `🔐 *Your Funds, Your Control*\n` +
+        `🔐 *Your Funds, Your Control:*\n\n` +
         `• You provide your wallet address\n` +
         `• We create a secure Smart Contract Wallet for trading\n` +
         `• Only YOU can withdraw - we can't touch your funds\n\n` +
-        `📊 *Smart Strategy*\n` +
-        `• Set your risk level (conservative or aggressive)\n` +
-        `• Define when to buy/sell automatically\n` +
-        `• Track performance with real-time charts\n\n` +
         `━━━━━━━━━━━━━━━━━━━━\n\n` +
         `*Let's get started!* 🚀\n\n` +
         `Please send me your **Ethereum wallet address**.\n\n` +
@@ -211,24 +304,19 @@ async function handleStart(chatId, userId, username, env) {
       parse_mode: 'Markdown'
     };
 
-    await sendMessage(env.BOT_TOKEN, introMessage);
-
-    // Store pending registration state
-    await env.DB.prepare(
-      `INSERT OR REPLACE INTO RegistrationSessions (UserID, TelegramChatID, Username, State, CreatedAt)
-       VALUES (?, ?, ?, 'awaiting_wallet', datetime('now'))`
-    ).bind(userId, chatId, username || '').run();
+    await sendMessage(env.BOT_TOKEN, walletMessage);
 
     return new Response(JSON.stringify({
       success: true,
-      registered: false,
+      legalAgreed: true,
+      agreedAt: agreedAt,
       awaiting: 'wallet'
     }), {
       headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('Error in handleStart:', error);
+    console.error('Error in handleLegalAgreed:', error);
     throw error;
   }
 }
