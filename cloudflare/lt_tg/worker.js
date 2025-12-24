@@ -647,7 +647,7 @@ async function displayDepositAddress(chatId, userWallet, scwAddress, env) {
 • SCW: \`${scwAddress}\` (your trading wallet)
 
 ⚠️ *Reminder:* This is BETA software with unaudited smart contracts.
-📖 [Terms](https://lazaitrader-1.gitbook.io/lazaitrader-docs/legal/terms_of_service) • [Disclaimer](https://lazaitrader-1.gitbook.io/lazaitrader-docs/legal/disclaimer)
+📖 [Terms](http://docs.lazaitrader.com/legal/TERMS_OF_SERVICE) • [Disclaimer](http://docs.lazaitrader.com/legal/DISCLAIMER)
 
 ❓ *Need Help?*
 Use /help or contact: @LazaiTraderDev
