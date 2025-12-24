@@ -479,6 +479,9 @@ async function handleWalletVerification(chatId, userId, username, walletAddress,
       chainInfo += `\n🔗 *${deployment.chainName}:* ${tokenList}`;
     }
 
+    // Build Telegram username line - only show if username exists
+    const telegramLine = username ? `👤 Telegram: @${username}\n` : '';
+
     // Send success message with SCW info
     const successMessage = {
       chat_id: chatId,
@@ -487,7 +490,7 @@ async function handleWalletVerification(chatId, userId, username, walletAddress,
         `📋 *Your Details:*\n` +
         `💼 Your Wallet (EOA): \`${walletAddress}\`\n` +
         `🔐 Trading Wallet (SCW): \`${scwAddress}\`\n` +
-        `👤 Telegram: @${username || 'N/A'}\n` +
+        telegramLine +
         deploymentStatus +
         `💰 *Available Networks & Tokens:*${chainInfo}\n\n` +
         `━━━━━━━━━━━━━━━━━━━━\n\n` +
