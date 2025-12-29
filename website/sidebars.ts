@@ -111,6 +111,13 @@ const sidebars: SidebarsConfig = {
         'legal/RESTRICTED_JURISDICTIONS',
       ],
     },
+        {
+      type: 'category',
+      label: 'Branding',
+      items: [
+        'branding/branding-principles',
+      ],
+    },
   ],
 };
 
