@@ -1,0 +1,1416 @@
+Repository Structure
+
+LazaiTrader_home/
+│   ├── LICENSE
+│   ├── README.md
+│   ├── ctp.py
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── postcss.config.cjs
+│   ├── tailwind.config.cjs
+│   ├── vite.config.js
+│   ├── public/
+│   │   ├── gmetis.png
+│   │   ├── lazaitrader.png
+│   │   ├── vite.svg
+│   ├── src/
+│   │   ├── App.jsx
+│   │   ├── index.css
+│   │   ├── main.jsx
+│   │   ├── style.js
+│   │   ├── assets/
+│   │   │   ├── Discount.svg
+│   │   │   ├── Send.svg
+│   │   │   ├── Shield.svg
+│   │   │   ├── Star.svg
+│   │   │   ├── airbnb.png
+│   │   │   ├── apple.svg
+│   │   │   ├── arrow-up.svg
+│   │   │   ├── bill.png
+│   │   │   ├── binance.png
+│   │   │   ├── card.png
+│   │   │   ├── close.svg
+│   │   │   ├── coinbase.png
+│   │   │   ├── cvpbadge.svg
+│   │   │   ├── dropbox.png
+│   │   │   ├── facebook.svg
+│   │   │   ├── gmetis.png
+│   │   │   ├── google.svg
+│   │   │   ├── hyperion.svg
+│   │   │   ├── index.js
+│   │   │   ├── instagram.svg
+│   │   │   ├── lazaitrader.png
+│   │   │   ├── linkedin.svg
+│   │   │   ├── logo.svg
+│   │   │   ├── menu.svg
+│   │   │   ├── people01.png
+│   │   │   ├── people02.png
+│   │   │   ├── people03.png
+│   │   │   ├── quotes.svg
+│   │   │   ├── robot.png
+│   │   │   ├── telegram.svg
+│   │   │   ├── twitter.svg
+│   │   ├── components/
+│   │   │   ├── Button.jsx
+│   │   │   ├── CampaignPopup.jsx
+│   │   │   ├── CardDeal.jsx
+│   │   │   ├── Clients.jsx
+│   │   │   ├── Features.jsx
+│   │   │   ├── Footer.jsx
+│   │   │   ├── GetStarted.jsx
+│   │   │   ├── Hero.jsx
+│   │   │   ├── HyperHack.jsx
+│   │   │   ├── Navbar.jsx
+│   │   │   ├── Stats.jsx
+│   │   │   ├── index.js
+│   │   ├── constants/
+│   │   │   ├── index.js
+
+
+File Contents
+
+// filepath: LICENSE
+MIT License
+
+Copyright (c) 2024 David Poslušný
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+// filepath: README.md
+# gMetis
+<a href="https://gmetis.io">New Website</a> </br>
+Modern responsive business website design made with React and Tailwind CSS.
+
+## Built With
+- React.js
+- Tailwind CSS
+- Vite
+
+// filepath: ctp.py
+import os
+
+EXCLUDE_DIRS = {'node_modules', 'venv', '__pycache__', '.git', 'archive', 'evm_env'}
+EXCLUDE_FILES = {'.DS_Store'}
+BINARY_EXTS = {'.png', '.jpg', '.jpeg', '.ico', '.gif', '.webp', '.svg', '.json', '.txt', '.csv'}
+
+def is_binary(filename):
+    ext = os.path.splitext(filename)[1].lower()
+    return ext in BINARY_EXTS
+
+def list_files(startpath):
+    structure = []
+    filepaths = []
+    for root, dirs, files in os.walk(startpath):
+        # Filter out excluded dirs
+        dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS and not d.startswith('.')]
+        level = root.replace(startpath, '').count(os.sep)
+        indent = '│   ' * level
+        folder = os.path.basename(root)
+        if level == 0:
+            structure.append(f"{folder}/")
+        else:
+            structure.append(f"{indent}├── {folder}/")
+        for f in sorted(files):
+            if f in EXCLUDE_FILES or f.startswith('.'):
+                continue
+            relpath = os.path.join(root, f)
+            structure.append(f"{indent}│   ├── {f}")
+            filepaths.append(relpath)
+    return structure, filepaths
+
+def main():
+    root = os.path.dirname(os.path.abspath(__file__))
+    structure, filepaths = list_files(root)
+    with open('repo_structure_and_scripts.txt', 'w', encoding='utf-8') as out:
+        out.write("Repository Structure\n\n")
+        for line in structure:
+            out.write(line + '\n')
+        out.write("\n\nFile Contents\n\n")
+        for path in filepaths:
+            rel = os.path.relpath(path, root)
+            if is_binary(path):
+                out.write(f"// filepath: {rel}\n(BINARY FILE SKIPPED)\n\n")
+                continue
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                out.write(f"// filepath: {rel}\n")
+                out.write(content)
+                if not content.endswith('\n'):
+                    out.write('\n')
+                out.write('\n')
+            except Exception as e:
+                out.write(f"// filepath: {rel}\n(COULD NOT READ FILE: {e})\n\n")
+
+if __name__ == "__main__":
+    main()
+
+// filepath: index.html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/lazaitrader.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LazaiTrader - AI-Powered Trading on Telegram</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+
+// filepath: package-lock.json
+(BINARY FILE SKIPPED)
+
+// filepath: package.json
+(BINARY FILE SKIPPED)
+
+// filepath: postcss.config.cjs
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+
+// filepath: tailwind.config.cjs
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ["./index.html", "./src/**/*.{html,js,jsx}"],
+  mode: "jit",
+  theme: {
+    extend: {
+      colors: {
+        primary: "#00040f",
+        secondary: "#00f6ff",
+        dimWhite: "rgba(255, 255, 255, 0.7)",
+        dimBlue: "rgba(9, 151, 124, 0.1)",
+      },
+      fontFamily: {
+        poppins: ["Poppins", "sans-serif"],
+      },
+    },
+    screens: {
+      xs: "480px",
+      ss: "620px",
+      sm: "768px",
+      md: "1060px",
+      lg: "1200px",
+      xl: "1700px",
+    },
+  },
+  plugins: [],
+};
+
+// filepath: vite.config.js
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+})
+
+// filepath: public\gmetis.png
+(BINARY FILE SKIPPED)
+
+// filepath: public\lazaitrader.png
+(BINARY FILE SKIPPED)
+
+// filepath: public\vite.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\App.jsx
+import React from 'react';
+import { 
+  GetStarted, 
+  Features, 
+  HyperHack,
+  Footer, 
+  Hero, 
+  Navbar, 
+  Stats 
+} from './components';
+import CampaignPopup from './components/CampaignPopup';
+import styles from './style';
+
+const App = () => {
+  return (
+    <div className='bg-primary w-full overflow-hidden'>
+      <CampaignPopup />
+      <div className={`${styles.paddingX} ${styles.flexCenter}`}>
+        <div className={`${styles.boxWidth}`}>
+          <Navbar/>
+        </div>
+      </div>
+      <div className={`bg-primary ${styles.flexStart}`}>
+        <div className={`${styles.boxWidth}`}>
+          <Hero/>      
+        </div>
+      </div>
+      <div className={`bg-primary ${styles.paddingX} ${styles.flexStart}`}>
+        <div className={`${styles.boxWidth}`}>
+          <Stats/>
+          <Features/>
+          <HyperHack/>
+          <GetStarted/>
+          <Footer/>     
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;
+
+// filepath: src\index.css
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --black-gradient: linear-gradient(
+    144.39deg,
+    #ffffff -278.56%,
+    #6d6d6d -78.47%,
+    #11101d 91.61%
+  );
+  --card-shadow: 0px 20px 100px -10px rgba(66, 71, 91, 0.1);
+}
+
+* {
+  scroll-behavior: smooth;
+}
+
+.text-gradient {
+  background: radial-gradient(
+    64.18% 64.18% at 71.16% 35.69%,
+    #def9fa 0.89%,
+    #bef3f5 17.23%,
+    #9dedf0 42.04%,
+    #7de7eb 55.12%,
+    #5ce1e6 71.54%,
+    #33bbcf 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+}
+
+.bg-blue-gradient {
+  background: linear-gradient(
+    157.81deg,
+    #def9fa -43.27%,
+    #bef3f5 -21.24%,
+    #9dedf0 12.19%,
+    #7de7eb 29.82%,
+    #5ce1e6 51.94%,
+    #33bbcf 90.29%
+  );
+}
+
+.bg-black-gradient {
+  background: linear-gradient(
+    144.39deg,
+    #ffffff -278.56%,
+    #6d6d6d -78.47%,
+    #11101d 91.61%
+  );
+}
+
+.bg-black-gradient-2 {
+  background: linear-gradient(
+    -168.39deg,
+    #ffffff -278.56%,
+    #6d6d6d -78.47%,
+    #11101d 91.61%
+  );
+}
+
+.bg-gray-gradient {
+  background: linear-gradient(
+    153.47deg,
+    rgba(255, 255, 255, 0) -341.94%,
+    #14101d 95.11%
+  );
+}
+
+.bg-discount-gradient {
+  background: linear-gradient(125.17deg, #272727 0%, #11101d 100%);
+}
+
+.box-shadow {
+  box-shadow: 0px 20px 100px -10px rgba(66, 71, 91, 0.1);
+}
+
+.sidebar {
+  -webkit-animation: slide-top 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation: slide-top 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@-webkit-keyframes slide-top {
+  0% {
+    -webkit-transform: translateY(100px);
+    transform: translateY(100px);
+  }
+  100% {
+    -webkit-transform: translateY(0);
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-top {
+  0% {
+    -webkit-transform: translateY(100px);
+    transform: translateY(100px);
+  }
+  100% {
+    -webkit-transform: translateY(0);
+    transform: translateY(0);
+  }
+}
+
+.feature-card:hover {
+  background: var(--black-gradient);
+  box-shadow: var(--card-shadow);
+}
+
+.feedback-container .feedback-card:last-child {
+  margin-right: 0px;
+}
+
+.feedback-card {
+  background: transparent;
+}
+
+.feedback-card:hover {
+  background: var(--black-gradient);
+}
+
+.blue__gradient {
+  background: linear-gradient(180deg, rgba(188, 165, 255, 0) 0%, #214d76 100%);
+  filter: blur(100px);
+}
+
+.pink__gradient {
+  background: linear-gradient(90deg, #f4c4f3 0%, #fc67fa 100%);
+  filter: blur(200px);
+}
+
+.white__gradient {
+  background: rgba(255, 255, 255, 0.6);
+  filter: blur(300px);
+}
+
+.highlight-link {
+  color: #33bbcf; /* Use the blueish color from your gradient */
+  text-decoration: underline;
+}
+
+// filepath: src\main.jsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
+
+// filepath: src\style.js
+const styles = {
+  boxWidth: "xl:max-w-[1280px] w-full",
+
+  heading2: "font-poppins font-semibold xs:text-[48px] text-[40px] text-white xs:leading-[76.8px] leading-[66.8px] w-full",
+  paragraph: "font-poppins font-normal text-dimWhite text-[18px] leading-[30.8px]",
+
+  flexCenter: "flex justify-center items-center",
+  flexStart: "flex justify-center items-start",
+
+  paddingX: "sm:px-16 px-6",
+  paddingY: "sm:py-16 py-6",
+  padding: "sm:px-16 px-6 sm:py-12 py-4",
+
+  marginX: "sm:mx-16 mx-6",
+  marginY: "sm:my-16 my-6",
+}
+
+export const layout = {
+  section: `flex md:flex-row flex-col ${styles.paddingY}`,
+  sectionReverse: `flex md:flex-row flex-col-reverse ${styles.paddingY}`,
+
+  sectionImgReverse: `flex-1 flex ${styles.flexCenter} md:mr-10 mr-0 md:mt-0 mt-10 relative`,
+  sectionImg: `flex-1 flex ${styles.flexCenter} md:ml-10 ml-0 md:mt-0 mt-10 relative`,
+
+  sectionInfo: `flex-1 ${styles.flexStart} flex-col`,
+}
+
+export default styles;
+
+// filepath: src\assets\Discount.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\Send.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\Shield.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\Star.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\airbnb.png
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\apple.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\arrow-up.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\bill.png
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\binance.png
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\card.png
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\close.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\coinbase.png
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\cvpbadge.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\dropbox.png
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\facebook.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\gmetis.png
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\google.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\hyperion.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\index.js
+import gmetis from './lazaitrader.png' // This is your new logo
+import bill from "./bill.png";
+import binance from "./binance.png";
+import card from "./card.png";
+import coinbase from "./coinbase.png";
+import dropbox from "./dropbox.png";
+import logo from "./logo.svg";
+import quotes from "./quotes.svg";
+import robot from "./robot.png";
+import send from "./Send.svg";
+import shield from "./Shield.svg";
+import star from "./Star.svg";
+import menu from "./menu.svg";
+import close from "./close.svg";
+import google from "./google.svg";
+import apple from "./apple.svg";
+import arrowUp from "./arrow-up.svg";
+import discount from "./Discount.svg";
+import facebook from "./facebook.svg";
+import instagram from "./instagram.svg";
+import linkedin from "./linkedin.svg";
+import twitter from "./twitter.svg";
+import people01 from "./people01.png";
+import people02 from "./people02.png";
+import people03 from "./people03.png";
+import telegram from './telegram.svg';
+import hyperion from './hyperion.svg';
+
+export {
+  hyperion,
+  telegram,
+  gmetis,
+  bill,
+  binance,
+  card,
+  coinbase,
+  dropbox,
+  logo,
+  quotes,
+  robot,
+  send,
+  shield,
+  star,
+  menu,
+  close,
+  google,
+  apple,
+  arrowUp,
+  discount,
+  facebook,
+  instagram,
+  linkedin,
+  twitter,
+  people01,
+  people02,
+  people03,
+};
+
+// filepath: src\assets\instagram.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\lazaitrader.png
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\linkedin.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\logo.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\menu.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\people01.png
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\people02.png
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\people03.png
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\quotes.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\robot.png
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\telegram.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\assets\twitter.svg
+(BINARY FILE SKIPPED)
+
+// filepath: src\components\Button.jsx
+import React from 'react'
+
+const Button = ({ styles, text, link }) => {
+  return (
+    <a href={link} className={`py-4 px-6 bg-blue-gradient font-poppins font-medium text-[18px] text-primary outline-none ${styles} rounded-[10px]`}>
+      {text}
+    </a>
+  )
+}
+
+export default Button
+
+// filepath: src\components\CampaignPopup.jsx
+import React, { useState, useEffect } from 'react';
+
+const CampaignPopup = () => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    // Show popup when component mounts
+    setIsVisible(true);
+  }, []);
+
+  const closeModal = () => {
+    setIsVisible(false);
+  };
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{backgroundColor: 'rgba(0, 0, 0, 0.8)'}}>
+      <div className="bg-gray-800 rounded-2xl p-6 m-4 max-w-md w-full max-h-[90vh] overflow-y-auto border border-cyan-400">
+        <div className="flex justify-between items-start mb-4">
+          <h3 className="text-xl font-bold text-cyan-400">🏆 Current Spotlight Campaign</h3>
+          <button 
+            onClick={closeModal}
+            className="text-gray-400 hover:text-white text-2xl leading-none"
+          >
+            ×
+          </button>
+        </div>
+        <div className="space-y-4">
+          <p className="text-gray-300">
+            Prize Pool: <span className="text-cyan-400 font-bold">$100</span> (increases to <span className="text-cyan-400 font-bold">$500</span> if we win HyperHack!)
+          </p>
+          <ul className="space-y-2 text-gray-300 text-sm">
+            <li>🥇 1st Place: $50 → $100</li>
+            <li>🥈 2nd Place: $25 → $50</li>
+            <li>🥉 3rd Place: $25 → $50</li>
+            <li>💰 Plus 10 additional $30 winners if we win!</li>
+          </ul>
+          <div className="pt-4">
+            <a 
+              href="https://t.me/LazaiTrader_bot" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full inline-block text-center py-3 px-6 bg-gradient-to-r from-cyan-400 to-blue-500 font-medium text-gray-900 rounded-lg hover:opacity-90 transition-opacity"
+            >
+              Join Campaign
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CampaignPopup;
+
+// filepath: src\components\CardDeal.jsx
+import React from 'react'
+import { card } from '../assets'
+import styles, { layout } from '../style'
+import Button from './Button'
+
+const CardDeal = () => {
+  return (
+    <section className={layout.section}>
+      <div className={layout.sectionInfo}>
+        <h2 className={styles.heading2}>Unlock the Power of gMetis on Hercules DEX</h2>
+        <p className={`${styles.paragraph} max-w-[470px] mt-5`}>
+          Join the revolution with gMetis, now whitelisted on the leading DEX on Metis: Hercules DEX. Secure your gMetis tokens effortlessly and become a part of a thriving community. Holding gMetis not only boosts your rewards but also positions you at the forefront of innovation. Don't miss out on this opportunity to maximize your earnings and influence within the gMetis ecosystem.
+        </p>
+        <Button 
+          styles="mt-10" 
+          text="Buy on Hercules DEX" 
+          link="https://app.hercules.exchange/?outputCurrency=0xFbe0F778e3c1168bc63d7b6F880Ec0d5F9E524E6" 
+        />
+      </div>
+      <div className={layout.sectionImg}>
+        <img
+          src={card}
+          alt='card'
+          className='w-[100%] h-[100%]'
+        />
+      </div>
+    </section>
+  )
+}
+
+export default CardDeal
+
+// filepath: src\components\Clients.jsx
+import React from 'react'
+import { clients } from '../constants'
+import styles from '../style'
+
+const Clients = () => {
+  return (
+    <section className={`${styles.flexCenter} my-4`}>
+      <div className={`${styles.flexCenter} flex-wrap w-full`}>
+        {clients.map((client) => (
+          <div key={client.id} className={`flex-1 ${styles.flexCenter} sm:min-w-[192px] min-w-[120px]`}>
+            <img
+              src={client.logo}
+              alt='client'
+              className='sm:w-[192px] w-[100px] object-contain'
+            />           
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+export default Clients
+
+// filepath: src\components\Features.jsx
+import React from 'react';
+
+// Mock icons - in real implementation, these would be imported from assets
+const StarIcon = () => (
+  <svg className="w-full h-full" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+  </svg>
+);
+
+const ShieldIcon = () => (
+  <svg className="w-full h-full" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z"/>
+  </svg>
+);
+
+const SendIcon = () => (
+  <svg className="w-full h-full" fill="currentColor" viewBox="0 0 24 24">
+    <path d="m2 21 21-9L2 3v7l15 2-15 2v7z"/>
+  </svg>
+);
+
+const Features = () => {
+  const features = [
+    {
+      id: "feature-1",
+      icon: <StarIcon />,
+      title: "Strategy Vault",
+      content: "TEE-secured knowledge sharing system where trading data is contributed anonymously to build collective intelligence and AI-powered recommendations."
+    },
+    {
+      id: "feature-2", 
+      icon: <ShieldIcon />,
+      title: "Trading Analytics",
+      content: "View trading charts and real-time PnL tracking directly in Telegram with comprehensive performance analytics and strategy insights."
+    },
+    {
+      id: "feature-3",
+      icon: <SendIcon />,
+      title: "Telegram Trading",
+      content: "Execute trades through simple Telegram commands. No complex interfaces - just direct trading with automated strategy execution."
+    }
+  ];
+
+  return (
+    <section id="features" className="flex flex-col py-16 px-6 sm:px-16">
+      <div className="text-center mb-16">
+        <h2 className="font-semibold text-4xl sm:text-5xl text-white leading-tight mb-6">
+          Why Choose LazaiTrader
+        </h2>
+        <p className="font-normal text-gray-300 text-lg leading-8 max-w-2xl mx-auto">
+          Built on the same robust Alith framework infrastructure and a privacy-preserving Trusted Execution Environment (TEE), LazaiTrader adapts to market conditions while maintaining the user’s selected trading philosophy, effectively bringing institutional-grade trading strategies to retail users through a familiar messaging interface.
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-8">
+        {features.map((feature) => (
+          <div 
+            key={feature.id} 
+            className="flex flex-col items-start p-6 rounded-2xl bg-transparent hover:bg-gray-800 transition-all duration-300 hover:shadow-2xl group"
+          >
+            <div className="w-16 h-16 rounded-full flex items-center justify-center bg-gradient-to-r from-cyan-400 to-blue-500 text-gray-900 mb-4 group-hover:scale-110 transition-transform">
+              {feature.icon}
+            </div>
+            <h3 className="font-semibold text-xl text-white mb-3">
+              {feature.title}
+            </h3>
+            <p className="font-normal text-gray-300 text-base leading-6">
+              {feature.content}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+export default Features;
+
+// filepath: src\components\Footer.jsx
+import React from 'react';
+
+const Footer = () => {
+  // Simplified footer links
+  const footerLinks = [
+    {
+      title: "Navigation",
+      links: [
+        { name: "Features", link: "#features" },
+        { name: "Competition", link: "#hyperhack" },
+        { name: "Get Started", link: "#get-started" }
+      ]
+    },
+    {
+      title: "Support",
+      links: [
+        { name: "AI Support Bot", link: "https://t.me/LazaiTrader_alithbot" },
+        { name: "Trading Bot", link: "https://t.me/LazaiTrader_bot" }
+      ]
+    },
+    {
+      title: "Partners",
+      links: [
+        { name: "HyperHack", link: "https://hyperion.metis.io/#HyperHack-Hackathon" },
+        { name: "Hyperion Network", link: "https://hyperion.metis.io/" },
+        { name: "Metis", link: "https://metis.io" },
+        { name: "LAzAI Network", link: "https://lazai.network" }
+      ]
+    }
+  ];
+
+  // Updated social media with X logo
+  const socialMedia = [
+    {
+      id: "x",
+      icon: (
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+      ),
+      link: "https://x.com/lazaitrader"
+    },
+    {
+      id: "telegram",
+      icon: (
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+        </svg>
+      ),
+      link: "https://t.me/LazaiTrader_bot"
+    }
+  ];
+
+  return (
+    <section className="flex justify-center py-16 flex-col px-6 sm:px-16">
+      <div className="flex justify-start md:flex-row flex-col mb-8 w-full">
+        <div className="flex-1 flex flex-col justify-start mr-10">
+          <div className="flex items-center mb-4">
+            <div className="w-18 h-18 bg-cyan-400 rounded-full mr-4 flex items-center justify-center">
+              <span className="text-gray-900 font-bold text-2xl">L</span>
+            </div>
+            <span className="font-bold text-3xl text-white">LazaiTrader</span>
+          </div>
+          <p className="font-normal text-gray-300 text-lg leading-8 mt-4 max-w-sm">
+            AI-Powered Trading Platform on Telegram with TEE Security and Multi-Agent Intelligence
+          </p>
+        </div>
+        
+        <div className="flex-1 w-full flex flex-row justify-between flex-wrap md:mt-0 mt-10">
+          {footerLinks.map((linkGroup) => (
+            <div key={linkGroup.title} className="flex flex-col my-4 min-w-[150px]">
+              <h4 className="font-medium text-lg leading-7 text-white">
+                {linkGroup.title}
+              </h4>
+              <ul className="list-none mt-4">
+                {linkGroup.links.map((item, index) => (
+                  <li 
+                    key={item.name} 
+                    className={`font-normal text-base leading-6 text-gray-300 hover:text-cyan-400 cursor-pointer transition-colors ${
+                      index !== linkGroup.links.length - 1 ? 'mb-4' : 'mb-0'
+                    }`}
+                  >
+                    <a 
+                      href={item.link} 
+                      target={item.link.startsWith('http') ? "_blank" : "_self"}
+                      rel={item.link.startsWith('http') ? "noopener noreferrer" : undefined}
+                    >
+                      {item.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      <div className="w-full flex justify-between items-center md:flex-row flex-col pt-6 border-t border-gray-700">
+        <p className="font-normal text-center text-lg leading-7 text-white">
+          2025 LazaiTrader. All Rights Reserved.
+        </p>  
+        <div className="flex flex-row md:mt-0 mt-6">
+          {socialMedia.map((social, index) => (
+            <a 
+              key={social.id} 
+              href={social.link} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className={`text-gray-300 hover:text-cyan-400 transition-colors ${
+                index !== socialMedia.length - 1 ? 'mr-6' : 'mr-0'
+              }`}
+            >
+              {social.icon}
+            </a>
+          ))}
+        </div>    
+      </div>
+    </section>
+  );
+};
+
+export default Footer;
+
+// filepath: src\components\GetStarted.jsx
+import React from 'react';
+
+const GetStarted = () => {
+  return (
+    <section id="get-started" className="flex md:flex-row-reverse md:items-center flex-col py-16 px-6 sm:px-16">
+      <div className="flex-1 flex justify-center items-center md:ml-10 ml-0 md:mt-0 mt-10 relative">
+        <div className="w-full h-96 relative z-5 bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-24 h-24 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full mx-auto mb-4 flex items-center justify-center">
+              <svg className="w-12 h-12 text-gray-900" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 2.5l-3 3-3-3h6zM4 6h16v2l-8 5L4 8V6z"/>
+              </svg>
+            </div>
+            <p className="text-gray-300 font-medium">Telegram Trading Interface</p>
+          </div>
+        </div>
+        <div className="absolute z-3 -left-1/4 top-0 w-1/2 h-1/2 rounded-full bg-white/20 blur-3xl"/>
+        <div className="absolute z-0 -left-1/4 bottom-0 w-1/2 h-1/2 rounded-full bg-gradient-to-r from-pink-400/20 to-purple-400/20 blur-3xl"/>
+      </div>
+      
+      <div className="flex-1 flex justify-start items-start flex-col">
+        <h2 className="font-semibold text-4xl sm:text-5xl text-white leading-tight w-full">
+          Start Trading in Seconds
+        </h2>
+        <p className="font-normal text-gray-300 text-lg leading-8 max-w-md mt-5">
+          Experience the future of trading with LazaiTrader. No complex setups, no wallet management, no browser extensions. Simply start a conversation with our Telegram bot and begin trading with automated strategies.
+        </p>
+        
+        <div className="mt-8 space-y-4">
+          <div className="flex items-start space-x-3">
+            <div className="w-2 h-2 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
+            <div>
+              <h4 className="font-semibold text-white text-base mb-1">
+                Simple Commands
+              </h4>
+              <p className="font-normal text-gray-300 text-sm leading-5">
+                Execute trades through straightforward Telegram messages - no complex interfaces needed.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-start space-x-3">
+            <div className="w-2 h-2 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
+            <div>
+              <h4 className="font-semibold text-white text-base mb-1">
+                Real-time Analytics
+              </h4>
+              <p className="font-normal text-gray-300 text-sm leading-5">
+                View your trading performance and charts directly in Telegram with instant updates.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-start space-x-3">
+            <div className="w-2 h-2 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
+            <div>
+              <h4 className="font-semibold text-white text-base mb-1">
+                TEE Security
+              </h4>
+              <p className="font-normal text-gray-300 text-sm leading-5">
+                All data processing happens in secure Trusted Execution Environments for maximum privacy.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <a 
+          href="https://t.me/LazaiTrader_bot"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-10 py-4 px-6 bg-gradient-to-r from-cyan-400 to-blue-500 font-medium text-lg text-gray-900 rounded-xl hover:opacity-90 transition-opacity"
+        >
+          Launch Telegram Bot
+        </a>
+      </div>  
+    </section>
+  );
+};
+
+export default GetStarted;
+
+// filepath: src\components\Hero.jsx
+import React from 'react';
+
+const Hero = () => {
+  const handleLearnMore = (e) => {
+    e.preventDefault();
+    document.getElementById('features').scrollIntoView({ 
+      behavior: 'smooth',
+      block: 'start'
+    });
+  };
+
+  return (
+    <section id="home" className="flex md:flex-row flex-col py-16 px-6 sm:px-16">
+      <div className="flex-1 flex flex-col xl:px-0">
+        <div className="flex flex-row justify-between items-center w-full">
+          <h1 className="flex-1 font-semibold text-4xl sm:text-6xl lg:text-7xl text-white leading-tight">
+            LazaiTrader <br className="sm:block hidden" />{" "}
+            <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+              AI-Powered
+            </span>{" "}
+          </h1>
+        </div>
+        <h1 className="font-semibold text-4xl sm:text-6xl lg:text-7xl text-white leading-tight w-full">
+          Trading on Telegram.
+        </h1>
+        <p className="font-normal text-gray-300 text-lg leading-8 max-w-md mt-5">
+          Revolutionary platform combining AI trading strategies, TEE-secured analytics, and professional trading tools, all accessible through simple Telegram conversations.
+        </p>
+        
+        {/* Key highlights
+        <div className="flex flex-wrap gap-6 mt-6 mb-8">
+          <div className="flex items-center">
+            <div className="w-2 h-2 bg-cyan-400 rounded-full mr-3"></div>
+            <span className="text-gray-300 font-normal text-sm">110+ Active Users</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-2 h-2 bg-cyan-400 rounded-full mr-3"></div>
+            <span className="text-gray-300 font-normal text-sm">10K+ Transactions</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-2 h-2 bg-cyan-400 rounded-full mr-3"></div>
+            <span className="text-gray-300 font-normal text-sm">TEE Security</span>
+          </div>
+        </div> */}
+
+        <div className="flex flex-col sm:flex-row gap-4">
+          <a 
+            href="https://t.me/LazaiTrader_bot"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="py-4 px-6 bg-gradient-to-r from-cyan-400 to-blue-500 font-medium text-lg text-gray-900 rounded-xl hover:opacity-90 transition-opacity text-center"
+          >
+            Start Trading Now
+          </a>
+          <button 
+            onClick={handleLearnMore}
+            className="py-4 px-6 font-medium text-lg text-cyan-400 border border-cyan-400 rounded-xl hover:bg-cyan-400 hover:text-gray-900 transition-all duration-300 text-center"
+          >
+            Learn More
+          </button>
+        </div>
+      </div>
+      
+      <div className="flex-1 flex justify-center items-center md:my-0 my-10 relative">
+        <div className="w-80 h-80 rounded-full bg-gradient-to-r from-cyan-400/20 to-purple-400/20 flex items-center justify-center relative">
+          <div className="w-64 h-64 rounded-full bg-gradient-to-r from-cyan-400/30 to-blue-500/30 flex items-center justify-center">
+            <div className="w-48 h-48 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center">
+              <svg className="w-24 h-24 text-gray-900" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+            </div>
+          </div>
+          <div className="absolute z-0 w-40 h-32 top-0 bg-gradient-to-r from-pink-400/30 to-purple-400/30 rounded-full blur-3xl" />
+          <div className="absolute z-0 w-80 h-80 rounded-full bg-white/10 blur-3xl bottom-40" />
+          <div className="absolute z-0 w-48 h-48 right-20 bottom-20 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-full blur-3xl"/>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default Hero;
+
+// filepath: src\components\HyperHack.jsx
+import React from 'react';
+import { hyperion } from '../assets'; // You might want to replace this with a HyperHack badge
+import styles, { layout } from '../style';
+
+const HyperHack = () => {
+  return (
+    <section id='hyperhack' className={layout.sectionReverse}>
+      <div className={layout.sectionImgReverse}>
+        <a href="https://hyperion.metis.io/#HyperHack-Hackathon" target="_blank" rel="noopener noreferrer">
+          <img
+            src={hyperion}
+            alt='HyperHack Competition Badge'
+            className='w-[75%] h-[75%] relative z-[5] object-contain'
+          />
+        </a>
+        <div className='absolute z-[3] -left-1/2 top-0 w-[50%] h-[50%] rounded-full white__gradient'/>
+        <div className='absolute z-[0] -left-1/2 bottom-0 w-[50%] h-[50%] rounded-full pink__gradient'/>
+      </div>
+      <div className={layout.sectionInfo}>
+        <h2 className={styles.heading2}>Competing in HyperHack</h2>
+        <p className={`${styles.paragraph} max-w-[470px] mt-5`}>
+          <a href="https://hyperion.metis.io/#HyperHack-Hackathon" className="highlight-link">HyperHack</a> is a prominent event where developers and teams compete by building innovative applications on the <a href="https://hyperion.metis.io/" className="highlight-link">Hyperion network</a>, an AI-optimized, high-performance Layer 2 solution built on Metis.
+        </p>
+        <p className={`${styles.paragraph} max-w-[470px] mt-5`}>
+          LazaiTrader is currently participating in this competition. Winning the HyperHack prize would significantly increase our project's visibility and expand our testing reward pool from $100 to $500, allowing us to offer greater rewards to our community of testers and users.
+        </p>
+        <p className={`${styles.paragraph} max-w-[470px] mt-5`}>
+          Competition ends on <span className="text-secondary font-semibold">August 21st</span>. Rankings are based on highest wallet value achieved through our platform.
+        </p>
+      </div>  
+    </section>
+  );
+}
+
+export default HyperHack;
+
+// filepath: src\components\Navbar.jsx
+import React, { useState } from 'react';
+import { close, gmetis, menu } from '../assets';
+import { navLinks } from '../constants';
+
+const Navbar = () => {
+  const [toggle, setToggle] = useState(false);
+
+  const handleNavClick = (navId) => {
+    setToggle(false); // Close mobile menu when clicking a nav item
+    // Smooth scroll to section
+    const element = document.getElementById(navId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  return (
+    <nav className='w-full flex py-6 justify-between items-center navbar'>
+      <div className="flex items-center">
+        <img src={gmetis} alt='LazaiTrader' className='w-[48px] h-[48px] object-contain mr-3'/>
+        <span className='font-poppins font-bold text-[24px] text-white'>LazaiTrader</span>
+      </div>
+      
+      {/* Desktop Menu */}
+      <ul className='list-none sm:flex hidden justify-end items-center flex-1'>
+        {navLinks.map((nav, i) => (
+          <li 
+            key={nav.id}
+            className={`font-poppins font-normal cursor-pointer text-[16px] ${
+              i === navLinks.length - 1 ? 'mr-0' : 'mr-10'
+            } text-white hover:text-secondary transition-colors`}
+          >
+            <button onClick={() => handleNavClick(nav.id)}>
+              {nav.title}
+            </button>
+          </li>        
+        ))}
+      </ul>
+      
+      {/* Mobile Menu Button */}
+      <div className='sm:hidden flex flex-1 justify-end items-center'>
+        <img
+          src={toggle ? close : menu}
+          alt='menu'
+          className='w-[28px] h-[28px] object-contain cursor-pointer'
+          onClick={() => setToggle((previous) => !previous)}
+        />
+        
+        {/* Mobile Menu */}
+        <div className={`${
+          toggle ? 'flex' : 'hidden'
+        } p-6 bg-black-gradient absolute top-20 right-0 mx-4 my-2 min-w-[140px] rounded-xl sidebar z-50`}>
+          <ul className='list-none flex flex-col justify-end items-start flex-1 w-full'>
+            {navLinks.map((nav, i) => (
+              <li 
+                key={nav.id}
+                className={`font-poppins font-normal cursor-pointer text-[16px] ${
+                  i === navLinks.length - 1 ? 'mb-0' : 'mb-4'
+                } text-white hover:text-secondary transition-colors w-full`}
+              >
+                <button 
+                  onClick={() => handleNavClick(nav.id)}
+                  className="w-full text-left"
+                >
+                  {nav.title}
+                </button>
+              </li>        
+            ))}
+          </ul>
+        </div>
+      </div>
+    </nav>
+  );
+};
+
+export default Navbar;
+
+// filepath: src\components\Stats.jsx
+import React from 'react'
+import { stats } from '../constants'
+import styles from '../style'
+
+const Stats = () => {
+  return (
+    <section className={`${styles.flexCenter} flex-row flex-wrap sm:mb-20 mb-6`}>
+      {stats.map((stat) => (
+        <div key={stat.id} className={`flex-1 flex justify-start items-center flex-row m-3`}>
+          <h4 className='font-poppins font-semibold xs:text-[40px] text-[30px] xs:leading-[53px] leading-[43px] text-white'>{stat.value}</h4>
+          <p className='font-poppins font-normal xs:text-[20px] text-[15px] xs:leading-[26px] leading-[21px] text-gradient uppercase ml-3'>{stat.title}</p>
+        </div>
+      ))}
+    </section>
+  )
+}
+
+export default Stats
+
+// filepath: src\components\index.js
+import GetStarted from './GetStarted';
+import Features from './Features'; 
+import HyperHack from './HyperHack';
+import CardDeal from './CardDeal';
+import Clients from './Clients';
+import Footer from './Footer';
+import Hero from './Hero';
+import Navbar from './Navbar';
+import Stats from './Stats';
+import CampaignPopup from './CampaignPopup';
+
+export {
+    GetStarted,
+    Features, 
+    HyperHack,
+    CardDeal,
+    Clients,
+    Footer,
+    Hero,
+    Navbar,
+    Stats,
+    CampaignPopup
+}
+
+// filepath: src\constants\index.js
+export const navLinks = [
+  {
+    id: "home",
+    title: "Home",
+  },
+  {
+    id: "features", 
+    title: "Features",
+  },
+  {
+    id: "hyperhack",
+    title: "Competition",
+  },
+  {
+    id: "get-started", // Updated to match the section id
+    title: "Get Started",
+  },
+];
+
+// Simplified features - no duplicates
+export const features = [
+  {
+    id: "feature-1",
+    icon: "star",
+    title: "Strategy Vault",
+    content: "TEE-secured knowledge sharing system where trading data is contributed anonymously to build collective intelligence and AI-powered recommendations."
+  },
+  {
+    id: "feature-2", 
+    icon: "shield",
+    title: "Trading Analytics",
+    content: "View trading charts and real-time PnL tracking directly in Telegram with comprehensive performance analytics and strategy insights."
+  },
+  {
+    id: "feature-3",
+    icon: "send",
+    title: "Telegram Trading",
+    content: "Execute trades through simple Telegram commands. No complex interfaces - just direct trading with automated strategy execution."
+  }
+];
+
+export const feedback = [
+  {
+    id: "feedback-1",
+    content: "The Strategy Vault is game-changing! Getting AI recommendations based on anonymous community data has improved my trading performance significantly.",
+    name: "Alex Chen",
+    title: "Active Trader", 
+  },
+  {
+    id: "feedback-2",
+    content: "I love the trading charts in Telegram. Seeing my PnL and performance analytics without leaving the chat makes strategy optimization so much easier.",
+    name: "Maria Rodriguez",
+    title: "DeFi Enthusiast",
+  },
+  {
+    id: "feedback-3",
+    content: "Finally, a trading platform that feels natural. Just tell it what you want to trade, check your charts, and the TEE security gives me complete peace of mind.",
+    name: "James Thompson",
+    title: "Crypto Investor",
+  },
+];
+
+export const stats = [
+  {
+    id: "stats-1",
+    title: "Active Users",
+    value: "110+",
+  },
+  {
+    id: "stats-2", 
+    title: "Trading Pairs",
+    value: "2",
+  },
+  {
+    id: "stats-3",
+    title: "Transactions",
+    value: "10K+",
+  },
+];
+
+// Simplified footer links - no duplicates, cleaner structure
+export const footerLinks = [
+  {
+    title: "Navigation",
+    links: [
+      { name: "Features", link: "#features" },
+      { name: "Competition", link: "#hyperhack" },
+      { name: "Get Started", link: "#get-started" }
+    ],
+  },
+  {
+    title: "Support",
+    links: [
+      { name: "AI Support Bot", link: "https://t.me/LazaiTrader_alithbot" },
+      { name: "Trading Bot", link: "https://t.me/LazaiTrader_bot" }
+    ],
+  },
+  {
+    title: "Partners",
+    links: [
+      { name: "HyperHack", link: "https://hyperion.metis.io/#HyperHack-Hackathon" },
+      { name: "Hyperion Network", link: "https://hyperion.metis.io/" },
+      { name: "Metis", link: "https://metis.io" },
+      { name: "LAzAI Network", link: "https://lazai.network" }
+    ],
+  },
+];
+
+// Updated social media with X instead of Twitter
+export const socialMedia = [
+  {
+    id: "social-media-1",
+    icon: "x", // Updated from twitter to x
+    link: "https://x.com/lazaitrader",
+  },
+  {
+    id: "social-media-2",
+    icon: "telegram",
+    link: "https://t.me/LazaiTrader_bot",
+  },
+];
+
+export const clients = [
+  {
+    id: "client-2", 
+    logo: "binance",
+  },
+  {
+    id: "client-3",
+    logo: "coinbase",
+  },
+  {
+    id: "client-4",
+    logo: "dropbox",
+  },
+];
+
