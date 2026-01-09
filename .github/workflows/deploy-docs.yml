@@ -1,5 +1,6 @@
 name: Deploy Docusaurus to GitHub Pages
 
+
 on:
   push:
     branches:
